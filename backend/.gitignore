@@ -1,0 +1,7 @@
+# Kết quả build
+bin/
+obj/
+*.user
+
+# Công cụ dòng lệnh (dotnet-ef) — manifest nằm ở .config/dotnet-tools.json, có commit.
+# Bí mật khi chạy máy dev nằm ở user-secrets của Windows, KHÔNG nằm trong thư mục này.

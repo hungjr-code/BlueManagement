@@ -1,0 +1,192 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Chính sách quyền riêng tư — ClassManagement</title>
+<meta name="description" content="Chính sách quyền riêng tư của ứng dụng ClassManagement: dữ liệu nào được thu thập, dữ liệu Google được dùng thế nào, lưu ở đâu và cách thu hồi quyền.">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header>
+  <div class="thanh">
+    <span class="ten">
+      <svg width="26" height="26" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <rect x="3" y="4" width="18" height="17" rx="3" stroke="#1a73e8" stroke-width="2"/>
+        <path d="M3 9h18" stroke="#1a73e8" stroke-width="2"/>
+        <path d="M8 2v4M16 2v4" stroke="#1a73e8" stroke-width="2" stroke-linecap="round"/>
+        <path d="M8 14l2.5 2.5L16 12" stroke="#1a73e8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+      ClassManagement
+    </span>
+    <nav>
+      <a href="index.html">Trang chủ</a>
+      <a href="quyen-rieng-tu.html">Quyền riêng tư</a>
+      <a href="dieu-khoan.html">Điều khoản sử dụng</a>
+    </nav>
+  </div>
+</header>
+
+<main class="van-ban">
+
+  <h1>Chính sách quyền riêng tư</h1>
+  <p class="phu">
+    Áp dụng cho ứng dụng <strong>ClassManagement</strong> do <strong>[TÊN TRUNG TÂM]</strong> vận hành.
+    Cập nhật lần cuối: [NGÀY CẬP NHẬT].
+  </p>
+
+  <h2>1. Ứng dụng này là gì</h2>
+  <p>
+    ClassManagement là phần mềm quản lý lớp dạy kèm, dùng nội bộ cho trung tâm và các giáo viên của
+    trung tâm. Ứng dụng giúp quản lý học sinh, lịch dạy, điểm danh từng buổi, học phí, thu tiền và
+    đồng bộ lịch dạy lên Google Calendar.
+  </p>
+  <p>
+    Người vận hành ứng dụng (bên kiểm soát dữ liệu) là <strong>[TÊN TRUNG TÂM]</strong>,
+    liên hệ qua email <a href="mailto:[EMAIL LIÊN HỆ]">[EMAIL LIÊN HỆ]</a>.
+  </p>
+
+  <h2>2. Dữ liệu chúng tôi thu thập</h2>
+  <table class="bang">
+    <thead>
+      <tr><th>Loại dữ liệu</th><th>Khi nào</th><th>Để làm gì</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>Họ tên, địa chỉ email</td>
+        <td>Khi quản trị viên tạo tài khoản, khi giáo viên tự tạo tài khoản, hoặc khi đăng nhập bằng Google</td>
+        <td>Định danh tài khoản và hiển thị tên người dùng trong ứng dụng</td>
+      </tr>
+      <tr>
+        <td>Mật khẩu (chỉ với tài khoản tự tạo bằng email)</td>
+        <td>Khi đăng ký hoặc đổi mật khẩu</td>
+        <td>Đăng nhập. Mật khẩu được băm một chiều, ứng dụng không đọc được mật khẩu gốc</td>
+      </tr>
+      <tr>
+        <td>Dữ liệu nghiệp vụ: tên học sinh, lịch học, buổi học, điểm danh, học phí, phiếu thu</td>
+        <td>Do giáo viên/quản trị viên nhập trong quá trình sử dụng</td>
+        <td>Vận hành việc dạy học và thu học phí của trung tâm</td>
+      </tr>
+      <tr>
+        <td>Dữ liệu Google (xem mục 3)</td>
+        <td>Chỉ khi người dùng chủ động bấm “Đăng nhập bằng Google” hoặc “Kết nối Google Calendar” và đồng ý cấp quyền</td>
+        <td>Đăng nhập và tạo sự kiện cho các buổi dạy của chính người dùng</td>
+      </tr>
+      <tr>
+        <td>Nhật ký thao tác</td>
+        <td>Khi có thao tác ảnh hưởng tới tiền hoặc quyền: sửa điểm danh đã lưu, thu/huỷ phiếu thu, chốt sổ, đổi vai trò, đặt lại mật khẩu</td>
+        <td>Truy vết ai đã làm gì, phục vụ đối chiếu và giải thích khi có sai sót</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2>3. Dữ liệu Google: chúng tôi truy cập gì và dùng làm gì</h2>
+  <p>
+    Ứng dụng chỉ xin đúng bốn quyền sau, và chỉ khi người dùng bấm nút đăng nhập/kết nối bằng Google:
+  </p>
+  <table class="bang">
+    <thead>
+      <tr><th>Quyền</th><th>Ứng dụng dùng để làm gì</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><code>openid</code>, <code>email</code></td>
+        <td>Biết người đang đăng nhập là ai: lấy địa chỉ email và tên hiển thị để tạo/định danh tài khoản trong ứng dụng</td>
+      </tr>
+      <tr>
+        <td><code>calendar.events</code></td>
+        <td>Tạo sự kiện mới cho từng buổi dạy, cập nhật sự kiện khi buổi dạy thay đổi, và xoá sự kiện khi buổi dạy được đánh dấu là nghỉ. Ứng dụng lưu mã sự kiện do Google trả về để biết sự kiện nào là của mình</td>
+      </tr>
+      <tr>
+        <td><code>calendar.calendarlist.readonly</code></td>
+        <td>Đọc <em>danh sách</em> lịch của người dùng để họ chọn lịch nào sẽ nhận sự kiện (ví dụ lịch “Dạy kèm” thay vì lịch chính)</td>
+      </tr>
+    </tbody>
+  </table>
+  <p><strong>Ứng dụng không truy cập:</strong> nội dung Gmail, Google Drive, danh bạ, hồ sơ Google
+  ngoài email và tên hiển thị, và không truy cập lịch của bất kỳ người nào khác. Ứng dụng cũng
+  <strong>không gọi API đọc danh sách sự kiện</strong>: nó không đọc nội dung các sự kiện khác trên
+  lịch của người dùng, chỉ làm việc với những sự kiện do chính nó tạo ra.</p>
+
+  <h3>Nguyên tắc sử dụng dữ liệu Google (Limited Use)</h3>
+  <ul>
+    <li>Dữ liệu Google chỉ được dùng để cung cấp những tính năng người dùng nhìn thấy và đã đồng ý, như mô tả ở mục 3.</li>
+    <li>Ứng dụng <strong>không bán, không cho thuê và không chia sẻ</strong> dữ liệu Google cho bên thứ ba.</li>
+    <li>Dữ liệu Google <strong>không được dùng cho quảng cáo</strong>, không dùng để xác định hồ sơ tín dụng, không dùng để cho vay, và <strong>không dùng để huấn luyện mô hình trí tuệ nhân tạo</strong>.</li>
+    <li>Con người cũng không đọc dữ liệu Google của người dùng, trừ khi chính người dùng yêu cầu hỗ trợ và cho phép, hoặc khi pháp luật bắt buộc.</li>
+    <li>Việc sử dụng dữ liệu nhận được từ API của Google tuân thủ
+      <em>Google API Services User Data Policy</em>, bao gồm các yêu cầu về Limited Use.</li>
+  </ul>
+
+  <h2>4. Dữ liệu Google được lưu ở đâu và bảo vệ thế nào</h2>
+  <ul>
+    <li>Ứng dụng <strong>không lưu mật khẩu Google</strong> của người dùng, và không bao giờ thấy mật khẩu đó.</li>
+    <li>Để duy trì kết nối lịch, ứng dụng lưu một <strong>refresh token</strong> do Google cấp. Token này
+      được <strong>mã hoá</strong> trước khi ghi vào cơ sở dữ liệu và chỉ máy chủ ứng dụng giải mã được;
+      nó không bao giờ được gửi xuống trình duyệt và không xuất hiện ở bất kỳ danh sách nào.</li>
+    <li>Access token ngắn hạn chỉ nằm trong bộ nhớ khi đang xử lý, không lưu lại.</li>
+    <li>Phiên đăng nhập dùng cookie <code>httpOnly</code>, JavaScript trong trình duyệt không đọc được.</li>
+    <li>Máy chủ ứng dụng đặt tại [NƠI ĐẶT MÁY CHỦ]. Dữ liệu được truyền qua HTTPS khi triển khai thật.</li>
+  </ul>
+
+  <h2>5. Thu hồi quyền và xoá dữ liệu</h2>
+  <ul>
+    <li><strong>Thu hồi ngay trong ứng dụng:</strong> vào <em>Cài đặt → Google Calendar → Ngắt kết nối</em>.
+      Ứng dụng xoá refresh token đã lưu và (nếu người dùng chọn) xoá các sự kiện do nó tạo trên Google.</li>
+    <li><strong>Thu hồi từ phía Google:</strong> vào
+      <a href="https://myaccount.google.com/permissions" rel="noopener">myaccount.google.com/permissions</a>,
+      chọn ứng dụng này rồi bấm xoá quyền truy cập.</li>
+    <li><strong>Xoá dữ liệu:</strong> gửi email tới <a href="mailto:[EMAIL LIÊN HỆ]">[EMAIL LIÊN HỆ]</a>.
+      Chúng tôi xoá tài khoản, token Google và dữ liệu nghiệp vụ gắn với tài khoản đó trong vòng
+      <strong>30 ngày</strong>, trừ phần dữ liệu mà pháp luật yêu cầu phải giữ (ví dụ sổ thu học phí đã chốt).
+    </li>
+    <li>Khi một giáo viên ngừng làm việc, trung tâm khoá tài khoản và xoá token Google của người đó.</li>
+  </ul>
+
+  <h2>6. Chia sẻ dữ liệu</h2>
+  <p>
+    Chúng tôi không bán và không chia sẻ dữ liệu cá nhân cho bên thứ ba. Dữ liệu chỉ được chia sẻ
+    trong phạm vi cần thiết giữa quản trị viên và giáo viên của chính trung tâm (ví dụ giáo viên
+    xem được học sinh của mình), hoặc khi cơ quan có thẩm quyền yêu cầu theo pháp luật.
+    Ứng dụng không dùng dịch vụ quảng cáo hay công cụ theo dõi của bên thứ ba.
+  </p>
+
+  <h2>7. Dữ liệu của học sinh và phụ huynh</h2>
+  <p>
+    Thông tin học sinh (họ tên, lịch học, điểm danh, học phí) do giáo viên hoặc quản trị viên của
+    trung tâm nhập vào. Ứng dụng không thu thập dữ liệu trực tiếp từ trẻ em và không yêu cầu trẻ em
+    đăng nhập. Trung tâm có trách nhiệm nhập thông tin này khi đã có sự đồng ý của phụ huynh hoặc
+    người giám hộ.
+  </p>
+
+  <h2>8. Thay đổi chính sách</h2>
+  <p>
+    Chính sách này có thể được cập nhật khi ứng dụng thay đổi cách xử lý dữ liệu. Bản mới luôn được
+    đăng tại địa chỉ này kèm ngày cập nhật. Nếu thay đổi ảnh hưởng tới cách ứng dụng dùng dữ liệu
+    Google, chúng tôi sẽ thông báo cho người dùng trước khi áp dụng.
+  </p>
+
+  <h2>9. Liên hệ</h2>
+  <p>
+    <strong>[TÊN TRUNG TÂM]</strong><br>
+    Người phụ trách: [NGƯỜI PHỤ TRÁCH]<br>
+    Email: <a href="mailto:[EMAIL LIÊN HỆ]">[EMAIL LIÊN HỆ]</a><br>
+    Địa chỉ: [ĐỊA CHỈ LIÊN HỆ]
+  </p>
+
+</main>
+
+<footer>
+  <div class="thanh">
+    <span>© [NĂM] [TÊN TRUNG TÂM]. Ứng dụng ClassManagement.</span><br>
+    <a href="index.html">Trang chủ</a>
+    <a href="quyen-rieng-tu.html">Chính sách quyền riêng tư</a>
+    <a href="dieu-khoan.html">Điều khoản sử dụng</a>
+    <br>
+    <span>Cập nhật lần cuối: [NGÀY CẬP NHẬT]</span>
+  </div>
+</footer>
+
+</body>
+</html>

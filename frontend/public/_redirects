@@ -1,0 +1,3 @@
+# Cloudflare Pages: mọi đường dẫn không phải tệp có thật thì trả index.html cho React Router.
+# (Nhờ vậy mở thẳng /schedule hay bấm F5 ở /nhat-ky không bị 404.)
+/*    /index.html   200

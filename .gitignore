@@ -1,0 +1,35 @@
+# Bí mật: KHÔNG bao giờ commit. Bí mật thật nằm ở user-secrets (máy dev) hoặc biến môi trường (máy chủ).
+appsettings.Development.json
+appsettings.Local.json
+*.user
+.env.local
+
+# Kết quả build
+bin/
+obj/
+node_modules/
+dist/
+publish/
+wwwroot/
+
+# Khoá Data Protection: mất khoá là mọi refresh token Google không giải mã được.
+khoa-bao-mat/
+
+# Rác của IDE / hệ điều hành
+.vs/
+.vscode/
+.idea/
+*.swp
+Thumbs.db
+desktop.ini
+
+# Chứng chỉ / khoá riêng tư: KHÔNG bao giờ commit
+*.pfx
+*.p12
+*.key
+*.crt
+*.pem
+
+# Log và file tạm khi kiểm thử
+*.log
+raspbian.img
