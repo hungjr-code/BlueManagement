@@ -29,6 +29,10 @@ FROM mcr.microsoft.com/dotnet/aspnet:9.0 AS chay
 WORKDIR /app
 COPY --from=api /app ./
 ENV ASPNETCORE_ENVIRONMENT=Production
+# Render free chỉ có 512 MB RAM / 0.1 CPU: Server GC mặc định của ASP.NET Core ăn RAM hơn hẳn và
+# không lợi gì trên một lõi ảo, nên chuyển sang Workstation GC cho khỏi bị OOM-kill.
+ENV DOTNET_gcServer=0
+ENV DOTNET_GCHeapHardLimit=0x14000000
 EXPOSE 8080
 # Render cấp cổng qua biến PORT: app phải nghe đúng cổng đó, không được cứng 5080.
 CMD ["sh", "-c", "ASPNETCORE_URLS=http://0.0.0.0:${PORT:-8080} dotnet ClassManagement.Api.dll"]
