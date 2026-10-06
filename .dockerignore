@@ -1,0 +1,23 @@
+# Những gì KHÔNG đưa vào context build Docker.
+#
+# Quan trọng nhất: bin/ và obj/ của máy dev. project.assets.json trong đó trỏ đường dẫn
+# Windows (C:\Users\...\.nuget\packages); nếu lọt vào image thì `dotnet publish --no-restore`
+# chết với NETSDK1064 dù lệnh restore trong container vừa chạy xong.
+# Đồng thời không đưa cấu hình dev / bí mật của máy vào image.
+
+.git
+.vs
+**/bin
+**/obj
+**/node_modules
+**/dist
+deploy/publish
+deploy/__pycache__
+**/khoa-bao-mat
+**/appsettings.Development.json
+**/appsettings.Local.json
+**/*.pfx
+**/*.p12
+**/*.key
+**/*.pem
+**/*.log
