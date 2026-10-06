@@ -25,6 +25,8 @@ import urllib.parse
 import urllib.request
 from datetime import datetime
 
+import kiem_thu_pg
+
 API = "http://localhost:5080"
 THU_MUC_API = r"c:\Joel_vh\ClassManagement\backend\ClassManagement.Api"
 COOKIE_PHIEN = "cm_phien"
@@ -72,9 +74,7 @@ def doc_bi_mat() -> dict[str, str]:
 
 
 def chay_sql(cau: str) -> str:
-    return subprocess.run(
-        ["sqlcmd", "-S", r".\SQLEXPRESS", "-d", "ClassManagement", "-E", "-h", "-1", "-W", "-w", "800", "-I", "-Q", cau],
-        capture_output=True, text=True, encoding="utf-8", errors="replace").stdout or ""
+    return kiem_thu_pg.chay_sql(cau)
 
 
 def doc_so_sql(cau: str) -> int:
@@ -82,7 +82,7 @@ def doc_so_sql(cau: str) -> int:
         dong = dong.strip()
         if dong.startswith("CM=") and dong[3:].strip().isdigit():
             return int(dong[3:].strip())
-    raise SystemExit("Không đọc được số từ sqlcmd:\n" + chay_sql(cau))
+    raise SystemExit("Không đọc được số từ Postgres:\n" + chay_sql(cau))
 
 
 def doc_cookie(headers) -> dict[str, str]:
@@ -145,9 +145,9 @@ def dang_nhap_google(email: str):
 def don_tai_khoan_kiem_thu() -> None:
     """Xoá các tài khoản do bài kiểm thử này tạo (email @vidu.vn) và nhật ký của chúng."""
 
-    chay_sql("SET NOCOUNT ON; DELETE FROM NhatKy WHERE NguoiThucHienId IN "
-             "(SELECT Id FROM GiaoVien WHERE Email LIKE '%@vidu.vn'); SELECT 'CM=0';")
-    chay_sql("SET NOCOUNT ON; DELETE FROM GiaoVien WHERE Email LIKE '%@vidu.vn'; SELECT 'CM=0';")
+    chay_sql("DELETE FROM \"NhatKy\" WHERE \"NguoiThucHienId\" IN "
+             "(SELECT \"Id\" FROM \"GiaoVien\" WHERE \"Email\" LIKE '%@vidu.vn'); SELECT 'CM=0';")
+    chay_sql("DELETE FROM \"GiaoVien\" WHERE \"Email\" LIKE '%@vidu.vn'; SELECT 'CM=0';")
 
 
 def hop_thu_cho(email: str):
@@ -174,7 +174,7 @@ def main() -> int:
     token_admin = than["accessToken"]
 
     goi("/api/auth/gia-xoa-hop-thu", method="POST")
-    so_tai_khoan_truoc = doc_so_sql("SET NOCOUNT ON; SELECT 'CM=' + CONVERT(varchar(20), COUNT(*)) FROM GiaoVien;")
+    so_tai_khoan_truoc = doc_so_sql("SELECT 'CM=' || COUNT(*) FROM \"GiaoVien\";")
 
     print("== 1. Tự tạo tài khoản bằng email và mật khẩu ==")
     ma, than, cookie = goi("/api/auth/dang-ky", method="POST",
@@ -188,8 +188,8 @@ def main() -> int:
     ma, toi, _ = goi("/api/auth/me", token=token_tu_tao)
     kiem_tra(ma == 200 and toi["email"] == EMAIL_MOI, f"/api/auth/me trả đúng tài khoản vừa tạo: {toi.get('email')}")
 
-    vai_tro_sql = chay_sql("SET NOCOUNT ON; SELECT 'CM=' + VaiTro + '|' + TrangThai FROM GiaoVien "
-                           f"WHERE Email = '{EMAIL_MOI}';")
+    vai_tro_sql = chay_sql("SELECT 'CM=' || \"VaiTro\" || '|' || \"TrangThai\" FROM \"GiaoVien\" "
+                           f"WHERE \"Email\" = '{EMAIL_MOI}';")
     kiem_tra("giao_vien|dang_lam" in vai_tro_sql, "trong database: vai trò giáo viên, trạng thái đang làm")
 
     ma, than, _ = goi("/api/auth/login", method="POST", body={"email": EMAIL_MOI, "matKhau": MAT_KHAU_MOI})
@@ -235,19 +235,19 @@ def main() -> int:
              f"tài khoản Google mới có vai trò '{than.get('nguoiDung', {}).get('vaiTro')}'")
     token_google = than["accessToken"]
 
-    so_tai_khoan_google = doc_so_sql("SET NOCOUNT ON; SELECT 'CM=' + CONVERT(varchar(20), COUNT(*)) FROM GiaoVien "
-                                     f"WHERE Email = '{EMAIL_GOOGLE_MOI}';")
+    so_tai_khoan_google = doc_so_sql("SELECT 'CM=' || COUNT(*) FROM \"GiaoVien\" "
+                                     f"WHERE \"Email\" = '{EMAIL_GOOGLE_MOI}';")
     kiem_tra(so_tai_khoan_google == 1, "email Google mới được tạo đúng một tài khoản")
-    kiem_tra(doc_so_sql("SET NOCOUNT ON; SELECT 'CM=' + CONVERT(varchar(20), COUNT(*)) FROM GiaoVien "
-                        f"WHERE Email = '{EMAIL_GOOGLE_MOI}' AND GoogleTaiKhoan = '{EMAIL_GOOGLE_MOI}';") == 1,
+    kiem_tra(doc_so_sql("SELECT 'CM=' || COUNT(*) FROM \"GiaoVien\" "
+                        f"WHERE \"Email\" = '{EMAIL_GOOGLE_MOI}' AND \"GoogleTaiKhoan\" = '{EMAIL_GOOGLE_MOI}';") == 1,
              "đăng nhập bằng Google cũng liên kết luôn lịch Google của người đó")
-    kiem_tra(doc_so_sql("SET NOCOUNT ON; SELECT 'CM=' + CONVERT(varchar(20), COUNT(*)) FROM GiaoVien "
-                        f"WHERE Email = '{EMAIL_GOOGLE_MOI}' AND MatKhauBam IS NULL;") == 1,
+    kiem_tra(doc_so_sql("SELECT 'CM=' || COUNT(*) FROM \"GiaoVien\" "
+                        f"WHERE \"Email\" = '{EMAIL_GOOGLE_MOI}' AND \"MatKhauBam\" IS NULL;") == 1,
              "tài khoản tạo bằng Google chưa có mật khẩu (muốn có thì dùng quên mật khẩu)")
 
     dang_nhap_google(EMAIL_GOOGLE_MOI)
-    kiem_tra(doc_so_sql("SET NOCOUNT ON; SELECT 'CM=' + CONVERT(varchar(20), COUNT(*)) FROM GiaoVien "
-                        f"WHERE Email = '{EMAIL_GOOGLE_MOI}';") == 1,
+    kiem_tra(doc_so_sql("SELECT 'CM=' || COUNT(*) FROM \"GiaoVien\" "
+                        f"WHERE \"Email\" = '{EMAIL_GOOGLE_MOI}';") == 1,
              "đăng nhập Google lần hai không tạo thêm tài khoản")
 
     ma, than, _ = goi("/api/auth/dang-ky", method="POST",
@@ -261,12 +261,12 @@ def main() -> int:
     kiem_tra(len(thu_gui) == 1, f"hộp thư giả có {len(thu_gui)} thư gửi tới {EMAIL_MOI}")
     token_dat_lai = lay_token_tu_thu(thu_gui[0]["noiDung"]) if thu_gui else None
     kiem_tra(token_dat_lai is not None, "thư có liên kết kèm mã đặt lại mật khẩu")
-    kiem_tra(doc_so_sql("SET NOCOUNT ON; SELECT 'CM=' + CONVERT(varchar(20), COUNT(*)) FROM YeuCauDatLaiMatKhau;") >= 1,
+    kiem_tra(doc_so_sql("SELECT 'CM=' || COUNT(*) FROM \"YeuCauDatLaiMatKhau\";") >= 1,
              "yêu cầu được lưu trong database")
     # Trong database chỉ có bản băm, không có token thật.
     if token_dat_lai:
-        kiem_tra(doc_so_sql("SET NOCOUNT ON; SELECT 'CM=' + CONVERT(varchar(20), COUNT(*)) FROM YeuCauDatLaiMatKhau "
-                            f"WHERE TokenBam = '{token_dat_lai}';") == 0,
+        kiem_tra(doc_so_sql("SELECT 'CM=' || COUNT(*) FROM \"YeuCauDatLaiMatKhau\" "
+                            f"WHERE \"TokenBam\" = '{token_dat_lai}';") == 0,
                  "token thật KHÔNG được lưu trong database (chỉ lưu bản băm)")
 
     ma, _, _ = goi("/api/auth/quen-mat-khau", method="POST", body={"email": EMAIL_MOI})
@@ -316,24 +316,24 @@ def main() -> int:
         kiem_tra(ma == 200, f"sau đó đăng nhập bằng mật khẩu (không cần Google) -> HTTP {ma}")
 
     print("== 7. Dấu vết trong nhật ký ==")
-    so_tu_dang_ky = doc_so_sql("SET NOCOUNT ON; SELECT 'CM=' + CONVERT(varchar(20), COUNT(*)) FROM NhatKy "
-                               "WHERE HanhDong IN ('tu_dang_ky_tai_khoan','tu_dang_ky_bang_google');")
-    so_doi_mat_khau = doc_so_sql("SET NOCOUNT ON; SELECT 'CM=' + CONVERT(varchar(20), COUNT(*)) FROM NhatKy "
-                                 "WHERE HanhDong = 'dat_lai_mat_khau';")
+    so_tu_dang_ky = doc_so_sql("SELECT 'CM=' || COUNT(*) FROM \"NhatKy\" "
+                               "WHERE \"HanhDong\" IN ('tu_dang_ky_tai_khoan','tu_dang_ky_bang_google');")
+    so_doi_mat_khau = doc_so_sql("SELECT 'CM=' || COUNT(*) FROM \"NhatKy\" "
+                                 "WHERE \"HanhDong\" = 'dat_lai_mat_khau';")
     kiem_tra(so_tu_dang_ky >= 2, f"có {so_tu_dang_ky} dòng nhật ký về việc tự tạo tài khoản")
     kiem_tra(so_doi_mat_khau >= 1, f"có {so_doi_mat_khau} dòng nhật ký về việc đặt lại mật khẩu")
 
-    so_tai_khoan_sau = doc_so_sql("SET NOCOUNT ON; SELECT 'CM=' + CONVERT(varchar(20), COUNT(*)) FROM GiaoVien;")
+    so_tai_khoan_sau = doc_so_sql("SELECT 'CM=' || COUNT(*) FROM \"GiaoVien\";")
     kiem_tra(so_tai_khoan_sau >= so_tai_khoan_truoc + 3,
              f"số tài khoản tăng từ {so_tai_khoan_truoc} lên {so_tai_khoan_sau} (2 tự tạo + 1 tài khoản giả danh admin)")
 
     print("== 8. Dọn tài khoản thử nghiệm ==")
-    so_truoc_khi_don = doc_so_sql("SET NOCOUNT ON; SELECT 'CM=' + CONVERT(varchar(20), COUNT(*)) FROM GiaoVien;")
+    so_truoc_khi_don = doc_so_sql("SELECT 'CM=' || COUNT(*) FROM \"GiaoVien\";")
     so_tai_khoan_rac = doc_so_sql(
-        "SET NOCOUNT ON; SELECT 'CM=' + CONVERT(varchar(20), COUNT(*)) FROM GiaoVien WHERE Email LIKE '%@vidu.vn';")
+        "SELECT 'CM=' || COUNT(*) FROM \"GiaoVien\" WHERE \"Email\" LIKE '%@vidu.vn';")
     if so_tai_khoan_rac > 0:
         don_tai_khoan_kiem_thu()
-    so_sau_khi_don = doc_so_sql("SET NOCOUNT ON; SELECT 'CM=' + CONVERT(varchar(20), COUNT(*)) FROM GiaoVien;")
+    so_sau_khi_don = doc_so_sql("SELECT 'CM=' || COUNT(*) FROM \"GiaoVien\";")
     kiem_tra(so_sau_khi_don == so_truoc_khi_don - so_tai_khoan_rac,
              f"đã dọn {so_tai_khoan_rac} tài khoản thử, còn lại {so_sau_khi_don} tài khoản thật")
 

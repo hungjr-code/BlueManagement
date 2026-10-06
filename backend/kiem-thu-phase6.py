@@ -21,6 +21,8 @@ import urllib.request
 import uuid
 from datetime import date, datetime, timedelta, timezone
 
+import kiem_thu_pg
+
 API = "http://localhost:5080"
 THU_MUC_API = r"c:\Joel_vh\ClassManagement\backend\ClassManagement.Api"
 EMAIL_ADMIN = "admin@classmanagement.local"
@@ -44,9 +46,7 @@ def doc_mat_khau() -> str:
 
 
 def chay_sql(cau: str) -> str:
-    return subprocess.run(
-        ["sqlcmd", "-S", r".\SQLEXPRESS", "-d", "ClassManagement", "-E", "-h", "-1", "-W", "-w", "800", "-I", "-Q", cau],
-        capture_output=True, text=True, encoding="utf-8", errors="replace").stdout or ""
+    return kiem_thu_pg.chay_sql(cau)
 
 
 def goi(duong_dan: str, *, method: str = "GET", body=None, token: str | None = None):
@@ -73,21 +73,27 @@ def don_tai_khoan_kiem_thu() -> None:
     """Xoá tài khoản kiểm thử và dữ liệu đi kèm. Nhật ký thì GIỮ LẠI, chỉ gỡ người thực hiện."""
 
     chay_sql(
-        "SET NOCOUNT ON; "
-        "DECLARE @gv TABLE (Id uniqueidentifier); "
-        "INSERT INTO @gv SELECT Id FROM GiaoVien WHERE Email LIKE 'gv.p6.%'; "
-        "DECLARE @hs TABLE (Id uniqueidentifier); "
-        "INSERT INTO @hs SELECT h.Id FROM HocSinh h JOIN @gv g ON g.Id = h.GiaoVienId; "
-        "DELETE pt FROM PhieuThu pt JOIN HocPhi hp ON hp.Id = pt.HocPhiId WHERE hp.HocSinhId IN (SELECT Id FROM @hs); "
-        "DELETE FROM HocPhi WHERE HocSinhId IN (SELECT Id FROM @hs); "
-        "DELETE dd FROM DiemDanh dd JOIN BuoiHoc b ON b.Id = dd.BuoiHocId WHERE b.HocSinhId IN (SELECT Id FROM @hs); "
-        "DELETE FROM BuoiHoc WHERE HocSinhId IN (SELECT Id FROM @hs); "
-        "DELETE FROM KhungGioHoc WHERE HocSinhId IN (SELECT Id FROM @hs); "
-        "DELETE FROM HocSinh WHERE Id IN (SELECT Id FROM @hs); "
-        "DELETE FROM PhienDangNhap WHERE GiaoVienId IN (SELECT Id FROM @gv); "
-        "DELETE FROM YeuCauDatLaiMatKhau WHERE GiaoVienId IN (SELECT Id FROM @gv); "
-        "UPDATE NhatKy SET NguoiThucHienId = NULL WHERE NguoiThucHienId IN (SELECT Id FROM @gv); "
-        "DELETE FROM GiaoVien WHERE Id IN (SELECT Id FROM @gv);")
+        "DELETE FROM \"PhieuThu\" WHERE \"HocPhiId\" IN (SELECT hp.\"Id\" FROM \"HocPhi\" hp "
+        "JOIN \"HocSinh\" hs ON hs.\"Id\" = hp.\"HocSinhId\" JOIN \"GiaoVien\" g ON g.\"Id\" = hs.\"GiaoVienId\" "
+        "WHERE g.\"Email\" LIKE 'gv.p6.%'); "
+        "DELETE FROM \"HocPhi\" WHERE \"HocSinhId\" IN (SELECT hs.\"Id\" FROM \"HocSinh\" hs "
+        "JOIN \"GiaoVien\" g ON g.\"Id\" = hs.\"GiaoVienId\" WHERE g.\"Email\" LIKE 'gv.p6.%'); "
+        "DELETE FROM \"DiemDanh\" WHERE \"BuoiHocId\" IN (SELECT b.\"Id\" FROM \"BuoiHoc\" b "
+        "JOIN \"HocSinh\" hs ON hs.\"Id\" = b.\"HocSinhId\" JOIN \"GiaoVien\" g ON g.\"Id\" = hs.\"GiaoVienId\" "
+        "WHERE g.\"Email\" LIKE 'gv.p6.%'); "
+        "DELETE FROM \"BuoiHoc\" WHERE \"HocSinhId\" IN (SELECT hs.\"Id\" FROM \"HocSinh\" hs "
+        "JOIN \"GiaoVien\" g ON g.\"Id\" = hs.\"GiaoVienId\" WHERE g.\"Email\" LIKE 'gv.p6.%'); "
+        "DELETE FROM \"KhungGioHoc\" WHERE \"HocSinhId\" IN (SELECT hs.\"Id\" FROM \"HocSinh\" hs "
+        "JOIN \"GiaoVien\" g ON g.\"Id\" = hs.\"GiaoVienId\" WHERE g.\"Email\" LIKE 'gv.p6.%'); "
+        "DELETE FROM \"HocSinh\" WHERE \"GiaoVienId\" IN (SELECT \"Id\" FROM \"GiaoVien\" "
+        "WHERE \"Email\" LIKE 'gv.p6.%'); "
+        "DELETE FROM \"PhienDangNhap\" WHERE \"GiaoVienId\" IN (SELECT \"Id\" FROM \"GiaoVien\" "
+        "WHERE \"Email\" LIKE 'gv.p6.%'); "
+        "DELETE FROM \"YeuCauDatLaiMatKhau\" WHERE \"GiaoVienId\" IN (SELECT \"Id\" FROM \"GiaoVien\" "
+        "WHERE \"Email\" LIKE 'gv.p6.%'); "
+        "UPDATE \"NhatKy\" SET \"NguoiThucHienId\" = NULL WHERE \"NguoiThucHienId\" IN (SELECT \"Id\" FROM \"GiaoVien\" "
+        "WHERE \"Email\" LIKE 'gv.p6.%'); "
+        "DELETE FROM \"GiaoVien\" WHERE \"Email\" LIKE 'gv.p6.%';")
 
 
 def main() -> int:
@@ -239,14 +245,14 @@ def main() -> int:
     print("== 9. Dọn dẹp tài khoản kiểm thử ==")
 
     def dem_nhat_ky_cua_buoi() -> str:
-        return chay_sql("SET NOCOUNT ON; SELECT 'CM=' + CAST(COUNT(*) AS varchar) FROM NhatKy "
-                        f"WHERE DoiTuongId = '{buoi_id}';").strip()
+        return chay_sql("SELECT 'CM=' || COUNT(*) FROM \"NhatKy\" "
+                        f"WHERE \"DoiTuongId\" = '{buoi_id}';").strip()
 
     # Hai dòng cho buổi này: thêm buổi dạy bù và sửa điểm danh (lần điểm danh ĐẦU không ghi nhật ký).
     truoc_khi_don = dem_nhat_ky_cua_buoi()
     kiem_tra("CM=2" == truoc_khi_don, f"buổi kiểm thử có đúng 2 dòng nhật ký ({truoc_khi_don})")
     don_tai_khoan_kiem_thu()
-    con_lai = chay_sql("SET NOCOUNT ON; SELECT 'CM=' + CAST(COUNT(*) AS varchar) FROM GiaoVien WHERE Email LIKE 'gv.p6.%';")
+    con_lai = chay_sql("SELECT 'CM=' || COUNT(*) FROM \"GiaoVien\" WHERE \"Email\" LIKE 'gv.p6.%';")
     kiem_tra("CM=0" in con_lai, "đã dọn tài khoản kiểm thử")
     # Dọn tài khoản KHÔNG được xoá vết: nhật ký là sổ ghi một chiều, chỉ gỡ người thực hiện.
     kiem_tra(dem_nhat_ky_cua_buoi() == truoc_khi_don,

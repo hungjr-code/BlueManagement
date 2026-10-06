@@ -16,6 +16,8 @@ import urllib.request
 import uuid
 from datetime import date, timedelta
 
+import kiem_thu_pg
+
 API = "http://localhost:5080"
 THU_MUC_API = r"c:\Joel_vh\ClassManagement\backend\ClassManagement.Api"
 EMAIL_ADMIN = "admin@classmanagement.local"
@@ -63,32 +65,36 @@ def thu_cua(ngay: date) -> str:
 
 
 def chay_sql(cau: str) -> str:
-    """Chạy một câu lệnh SQL và trả về toàn bộ kết quả dạng chuỗi."""
+    """Chạy một câu lệnh SQL (Postgres) và trả về toàn bộ kết quả dạng chuỗi."""
 
-    return subprocess.run(
-        ["sqlcmd", "-S", r".\SQLEXPRESS", "-d", "ClassManagement", "-E", "-h", "-1", "-W", "-w", "800", "-I", "-Q", cau],
-        capture_output=True, text=True, encoding="utf-8", errors="replace").stdout or ""
+    return kiem_thu_pg.chay_sql(cau)
 
 
 def don_tai_khoan_kiem_thu() -> None:
     """Xoá tài khoản kiểm thử và dữ liệu đi kèm, để lần chạy sau bắt đầu sạch."""
 
     chay_sql(
-        "SET NOCOUNT ON; "
-        "DECLARE @gv TABLE (Id uniqueidentifier); "
-        "INSERT INTO @gv SELECT Id FROM GiaoVien WHERE Email LIKE 'gv.p2.%'; "
-        "DECLARE @hs TABLE (Id uniqueidentifier); "
-        "INSERT INTO @hs SELECT h.Id FROM HocSinh h JOIN @gv g ON g.Id = h.GiaoVienId; "
-        "DELETE pt FROM PhieuThu pt JOIN HocPhi hp ON hp.Id = pt.HocPhiId WHERE hp.HocSinhId IN (SELECT Id FROM @hs); "
-        "DELETE FROM HocPhi WHERE HocSinhId IN (SELECT Id FROM @hs); "
-        "DELETE dd FROM DiemDanh dd JOIN BuoiHoc b ON b.Id = dd.BuoiHocId WHERE b.HocSinhId IN (SELECT Id FROM @hs); "
-        "DELETE FROM BuoiHoc WHERE HocSinhId IN (SELECT Id FROM @hs); "
-        "DELETE FROM KhungGioHoc WHERE HocSinhId IN (SELECT Id FROM @hs); "
-        "DELETE FROM HocSinh WHERE Id IN (SELECT Id FROM @hs); "
-        "DELETE FROM PhienDangNhap WHERE GiaoVienId IN (SELECT Id FROM @gv); "
-        "DELETE FROM YeuCauDatLaiMatKhau WHERE GiaoVienId IN (SELECT Id FROM @gv); "
-        "UPDATE NhatKy SET NguoiThucHienId = NULL WHERE NguoiThucHienId IN (SELECT Id FROM @gv); "
-        "DELETE FROM GiaoVien WHERE Id IN (SELECT Id FROM @gv);")
+        "DELETE FROM \"PhieuThu\" WHERE \"HocPhiId\" IN (SELECT hp.\"Id\" FROM \"HocPhi\" hp "
+        "JOIN \"HocSinh\" hs ON hs.\"Id\" = hp.\"HocSinhId\" JOIN \"GiaoVien\" g ON g.\"Id\" = hs.\"GiaoVienId\" "
+        "WHERE g.\"Email\" LIKE 'gv.p2.%'); "
+        "DELETE FROM \"HocPhi\" WHERE \"HocSinhId\" IN (SELECT hs.\"Id\" FROM \"HocSinh\" hs "
+        "JOIN \"GiaoVien\" g ON g.\"Id\" = hs.\"GiaoVienId\" WHERE g.\"Email\" LIKE 'gv.p2.%'); "
+        "DELETE FROM \"DiemDanh\" WHERE \"BuoiHocId\" IN (SELECT b.\"Id\" FROM \"BuoiHoc\" b "
+        "JOIN \"HocSinh\" hs ON hs.\"Id\" = b.\"HocSinhId\" JOIN \"GiaoVien\" g ON g.\"Id\" = hs.\"GiaoVienId\" "
+        "WHERE g.\"Email\" LIKE 'gv.p2.%'); "
+        "DELETE FROM \"BuoiHoc\" WHERE \"HocSinhId\" IN (SELECT hs.\"Id\" FROM \"HocSinh\" hs "
+        "JOIN \"GiaoVien\" g ON g.\"Id\" = hs.\"GiaoVienId\" WHERE g.\"Email\" LIKE 'gv.p2.%'); "
+        "DELETE FROM \"KhungGioHoc\" WHERE \"HocSinhId\" IN (SELECT hs.\"Id\" FROM \"HocSinh\" hs "
+        "JOIN \"GiaoVien\" g ON g.\"Id\" = hs.\"GiaoVienId\" WHERE g.\"Email\" LIKE 'gv.p2.%'); "
+        "DELETE FROM \"HocSinh\" WHERE \"GiaoVienId\" IN (SELECT \"Id\" FROM \"GiaoVien\" "
+        "WHERE \"Email\" LIKE 'gv.p2.%'); "
+        "DELETE FROM \"PhienDangNhap\" WHERE \"GiaoVienId\" IN (SELECT \"Id\" FROM \"GiaoVien\" "
+        "WHERE \"Email\" LIKE 'gv.p2.%'); "
+        "DELETE FROM \"YeuCauDatLaiMatKhau\" WHERE \"GiaoVienId\" IN (SELECT \"Id\" FROM \"GiaoVien\" "
+        "WHERE \"Email\" LIKE 'gv.p2.%'); "
+        "UPDATE \"NhatKy\" SET \"NguoiThucHienId\" = NULL WHERE \"NguoiThucHienId\" IN (SELECT \"Id\" FROM \"GiaoVien\" "
+        "WHERE \"Email\" LIKE 'gv.p2.%'); "
+        "DELETE FROM \"GiaoVien\" WHERE \"Email\" LIKE 'gv.p2.%';")
 
 
 def main() -> int:
@@ -317,22 +323,21 @@ def main() -> int:
              "học sinh đã nghỉ thì không sinh buổi mới nữa")
 
     print("== 14. Nhật ký và số liệu trong database ==")
-    sql = ("SET NOCOUNT ON; SELECT HanhDong + ' — ' + CAST(COUNT(*) AS varchar) + ' dòng' FROM NhatKy "
-           "WHERE HanhDong IN ('sua_diem_danh','tao_hoc_sinh','sua_hoc_sinh','cho_hoc_sinh_nghi','them_buoi_day_bu') "
-           "GROUP BY HanhDong ORDER BY HanhDong; SELECT TOP 3 HanhDong + '|' + ISNULL(LEFT(DuLieuTruoc, 45),'-') "
-           "+ '|' + ISNULL(LEFT(DuLieuSau, 60),'-') FROM NhatKy WHERE HanhDong = 'sua_diem_danh' "
-           "ORDER BY ThoiDiemUtc DESC;")
-    nhat_ky = subprocess.run(["sqlcmd", "-S", r".\SQLEXPRESS", "-d", "ClassManagement", "-E", "-W", "-Q", sql],
-                             capture_output=True, text=True, encoding="utf-8", errors="replace").stdout or ""
+    sql = ("SELECT \"HanhDong\" || ' — ' || COUNT(*) || ' dòng' FROM \"NhatKy\" "
+           "WHERE \"HanhDong\" IN ('sua_diem_danh','tao_hoc_sinh','sua_hoc_sinh','cho_hoc_sinh_nghi','them_buoi_day_bu') "
+           "GROUP BY \"HanhDong\" ORDER BY \"HanhDong\"; "
+           "SELECT \"HanhDong\" || '|' || COALESCE(LEFT(\"DuLieuTruoc\", 45),'-') "
+           "|| '|' || COALESCE(LEFT(\"DuLieuSau\", 60),'-') FROM \"NhatKy\" WHERE \"HanhDong\" = 'sua_diem_danh' "
+           "ORDER BY \"ThoiDiemUtc\" DESC LIMIT 3;")
+    nhat_ky = chay_sql(sql)
     print("  Nhật ký Phase 2:\n" + "\n".join("    " + d for d in nhat_ky.splitlines()[:8]))
     kiem_tra("sua_diem_danh" in nhat_ky, "có dòng nhật ký sua_diem_danh")
     kiem_tra("tao_hoc_sinh" in nhat_ky and "sua_hoc_sinh" in nhat_ky and "cho_hoc_sinh_nghi" in nhat_ky,
              "có nhật ký tạo / sửa / cho nghỉ học sinh")
 
-    sql = ("SET NOCOUNT ON; SELECT HoTen + '|' + CAST(SoBuoiMoiTuan AS varchar) + '|' + cachTinhHocPhi + '|' "
-           "+ trangThai FROM HocSinh WHERE HoTen LIKE '%Phase 2%';")
-    hoc_sinh_sql = subprocess.run(["sqlcmd", "-S", r".\SQLEXPRESS", "-d", "ClassManagement", "-E", "-W", "-Q", sql],
-                                  capture_output=True, text=True, encoding="utf-8", errors="replace").stdout or ""
+    sql = ("SELECT \"HoTen\" || '|' || \"SoBuoiMoiTuan\" || '|' || \"CachTinhHocPhi\" || '|' "
+           "|| \"TrangThai\" FROM \"HocSinh\" WHERE \"HoTen\" LIKE '%Phase 2%';")
+    hoc_sinh_sql = chay_sql(sql)
     print("  Học sinh Phase 2 trong SQL:\n" + "\n".join("    " + d for d in hoc_sinh_sql.splitlines()))
 
     ma, than = goi("/api/teachers", token=token_admin)

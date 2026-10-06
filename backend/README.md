@@ -1,6 +1,6 @@
 # ClassManagement — Backend (Phase 1 → 6)
 
-ASP.NET Core 9 Web API trên **SQL Server Express**, phục vụ frontend Vite + React.
+ASP.NET Core 9 Web API trên **PostgreSQL** (Npgsql; máy dev cũ từng chạy SQL Server Express), phục vụ frontend Vite + React.
 
 - **Phase 1**: database, đăng nhập hai vai trò, chặn quyền theo `giaoVienId`, cấu hình dùng chung,
   `/api/health`.
@@ -46,10 +46,16 @@ cd backend
 python kiem-thu-phase1.py   # 63 bước: đăng nhập, phân quyền, phiên, cài đặt, tài khoản nhận tiền
 python kiem-thu-phase2.py   # 48 bước: học sinh (kèm lớp), sinh buổi, điểm danh, nhật ký, tổng quan
 python kiem-thu-phase3.py   # 55 bước: đăng nhập Google, cấp quyền, đồng bộ riêng từng giáo viên
-python kiem-thu-phase4.py   # 66 bước: tính học phí, thu tiền, chốt sổ, đối chiếu ngân hàng, Excel
+python kiem-thu-phase4.py   # 67 bước: tính học phí, thu tiền, chốt sổ, đối chiếu ngân hàng, Excel
 python kiem-thu-phase5.py   # 43 bước: tự đăng ký, đăng ký bằng Google, quên/đặt lại mật khẩu
 python kiem-thu-phase6.py   # 37 bước: đọc nhật ký, lọc, phân trang, chặn giáo viên xem của người khác
 ```
+
+Các script chạy SQL qua **PostgreSQL** (`kiem_thu_pg.py`, thư viện `pg8000` — `python -m pip install pg8000`
+nếu máy còn thiếu). Chúng nối vào database theo biến môi trường **`CM_PG`** (chuỗi kết nối kiểu Npgsql);
+không đặt thì đọc `ConnectionStrings:MacDinh` trong user-secrets. Trên **database mới**, chạy
+`python kiem-thu-chuan-bi.py` trước phase3/phase4 — nó tạo giáo viên thứ hai `co.ha@classmanagement.local`
+và một học sinh có buổi trong tháng (phase4 cần dữ liệu của một giáo viên khác để kiểm phạm vi dữ liệu).
 
 Hai bộ `kiem-thu-phase3.py` và `kiem-thu-phase5.py` cần API chạy ở **chế độ giả**:
 `GoogleCalendar__CheDoGia=true Email__CheDoGia=true` (xem mục chế độ giả ở trên). Nhờ vậy kiểm được

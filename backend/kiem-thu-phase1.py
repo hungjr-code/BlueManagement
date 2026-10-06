@@ -15,6 +15,8 @@ import urllib.error
 import urllib.request
 import uuid
 
+import kiem_thu_pg
+
 API = "http://localhost:5080"
 THU_MUC_API = r"c:\Joel_vh\ClassManagement\backend\ClassManagement.Api"
 EMAIL_ADMIN = "admin@classmanagement.local"
@@ -68,11 +70,9 @@ def dang_nhap(email: str, mat_khau: str):
 
 
 def chay_sql(cau: str) -> str:
-    """Chạy một câu lệnh SQL và trả về toàn bộ kết quả dạng chuỗi."""
+    """Chạy một câu lệnh SQL (Postgres) và trả về toàn bộ kết quả dạng chuỗi."""
 
-    return subprocess.run(
-        ["sqlcmd", "-S", r".\SQLEXPRESS", "-d", "ClassManagement", "-E", "-h", "-1", "-W", "-w", "800", "-I", "-Q", cau],
-        capture_output=True, text=True, encoding="utf-8", errors="replace").stdout or ""
+    return kiem_thu_pg.chay_sql(cau)
 
 
 def don_tai_khoan_kiem_thu() -> None:
@@ -82,21 +82,27 @@ def don_tai_khoan_kiem_thu() -> None:
     """
 
     chay_sql(
-        "SET NOCOUNT ON; "
-        "DECLARE @gv TABLE (Id uniqueidentifier); "
-        f"INSERT INTO @gv SELECT Id FROM GiaoVien WHERE Email LIKE 'gv.kiem.thu.%'; "
-        "DECLARE @hs TABLE (Id uniqueidentifier); "
-        "INSERT INTO @hs SELECT h.Id FROM HocSinh h JOIN @gv g ON g.Id = h.GiaoVienId; "
-        "DELETE pt FROM PhieuThu pt JOIN HocPhi hp ON hp.Id = pt.HocPhiId WHERE hp.HocSinhId IN (SELECT Id FROM @hs); "
-        "DELETE FROM HocPhi WHERE HocSinhId IN (SELECT Id FROM @hs); "
-        "DELETE dd FROM DiemDanh dd JOIN BuoiHoc b ON b.Id = dd.BuoiHocId WHERE b.HocSinhId IN (SELECT Id FROM @hs); "
-        "DELETE FROM BuoiHoc WHERE HocSinhId IN (SELECT Id FROM @hs); "
-        "DELETE FROM KhungGioHoc WHERE HocSinhId IN (SELECT Id FROM @hs); "
-        "DELETE FROM HocSinh WHERE Id IN (SELECT Id FROM @hs); "
-        "DELETE FROM PhienDangNhap WHERE GiaoVienId IN (SELECT Id FROM @gv); "
-        "DELETE FROM YeuCauDatLaiMatKhau WHERE GiaoVienId IN (SELECT Id FROM @gv); "
-        "UPDATE NhatKy SET NguoiThucHienId = NULL WHERE NguoiThucHienId IN (SELECT Id FROM @gv); "
-        "DELETE FROM GiaoVien WHERE Id IN (SELECT Id FROM @gv);")
+        "DELETE FROM \"PhieuThu\" WHERE \"HocPhiId\" IN (SELECT hp.\"Id\" FROM \"HocPhi\" hp "
+        "JOIN \"HocSinh\" hs ON hs.\"Id\" = hp.\"HocSinhId\" JOIN \"GiaoVien\" g ON g.\"Id\" = hs.\"GiaoVienId\" "
+        "WHERE g.\"Email\" LIKE 'gv.kiem.thu.%'); "
+        "DELETE FROM \"HocPhi\" WHERE \"HocSinhId\" IN (SELECT hs.\"Id\" FROM \"HocSinh\" hs "
+        "JOIN \"GiaoVien\" g ON g.\"Id\" = hs.\"GiaoVienId\" WHERE g.\"Email\" LIKE 'gv.kiem.thu.%'); "
+        "DELETE FROM \"DiemDanh\" WHERE \"BuoiHocId\" IN (SELECT b.\"Id\" FROM \"BuoiHoc\" b "
+        "JOIN \"HocSinh\" hs ON hs.\"Id\" = b.\"HocSinhId\" JOIN \"GiaoVien\" g ON g.\"Id\" = hs.\"GiaoVienId\" "
+        "WHERE g.\"Email\" LIKE 'gv.kiem.thu.%'); "
+        "DELETE FROM \"BuoiHoc\" WHERE \"HocSinhId\" IN (SELECT hs.\"Id\" FROM \"HocSinh\" hs "
+        "JOIN \"GiaoVien\" g ON g.\"Id\" = hs.\"GiaoVienId\" WHERE g.\"Email\" LIKE 'gv.kiem.thu.%'); "
+        "DELETE FROM \"KhungGioHoc\" WHERE \"HocSinhId\" IN (SELECT hs.\"Id\" FROM \"HocSinh\" hs "
+        "JOIN \"GiaoVien\" g ON g.\"Id\" = hs.\"GiaoVienId\" WHERE g.\"Email\" LIKE 'gv.kiem.thu.%'); "
+        "DELETE FROM \"HocSinh\" WHERE \"GiaoVienId\" IN (SELECT \"Id\" FROM \"GiaoVien\" "
+        "WHERE \"Email\" LIKE 'gv.kiem.thu.%'); "
+        "DELETE FROM \"PhienDangNhap\" WHERE \"GiaoVienId\" IN (SELECT \"Id\" FROM \"GiaoVien\" "
+        "WHERE \"Email\" LIKE 'gv.kiem.thu.%'); "
+        "DELETE FROM \"YeuCauDatLaiMatKhau\" WHERE \"GiaoVienId\" IN (SELECT \"Id\" FROM \"GiaoVien\" "
+        "WHERE \"Email\" LIKE 'gv.kiem.thu.%'); "
+        "UPDATE \"NhatKy\" SET \"NguoiThucHienId\" = NULL WHERE \"NguoiThucHienId\" IN (SELECT \"Id\" FROM \"GiaoVien\" "
+        "WHERE \"Email\" LIKE 'gv.kiem.thu.%'); "
+        "DELETE FROM \"GiaoVien\" WHERE \"Email\" LIKE 'gv.kiem.thu.%';")
 
 
 def main() -> int:
@@ -109,7 +115,7 @@ def main() -> int:
     kiem_tra(ma == 200, f"HTTP {ma}")
     kiem_tra(than["status"] == "ok" and than["database"]["canConnect"] is True,
              f"status={than['status']} database.canConnect={than['database']['canConnect']}")
-    kiem_tra(than["provider"] if False else than["database"]["provider"] == "SQL Server",
+    kiem_tra(than["database"]["provider"] == "PostgreSQL",
              f"provider={than['database']['provider']}, version={than['version']}, env={than['environment']}")
 
     print("== 2. Chặn khi chưa đăng nhập ==")
@@ -253,18 +259,16 @@ def main() -> int:
 
     print("== 13. Kiểm tra trong database ==")
     sql = (
-        "SET NOCOUNT ON; "
-        "SELECT TOP 5 HanhDong, DoiTuong, ISNULL(DoiTuongId,'-') FROM NhatKy ORDER BY ThoiDiemUtc DESC;"
+        "SELECT \"HanhDong\", \"DoiTuong\", COALESCE(\"DoiTuongId\", '-') FROM \"NhatKy\" "
+        "ORDER BY \"ThoiDiemUtc\" DESC LIMIT 5;"
     )
-    nhat_ky = subprocess.run(["sqlcmd", "-S", r".\SQLEXPRESS", "-d", "ClassManagement", "-E", "-W", "-Q", sql],
-                             capture_output=True, text=True, encoding="utf-8", errors="replace").stdout or ""
+    nhat_ky = chay_sql(sql)
     print("  Nhật ký thao tác:\n" + "\n".join("    " + d for d in nhat_ky.splitlines()))
     kiem_tra("doi_vai_tro" not in nhat_ky, "chưa có dòng doi_vai_tro vì lần này chỉ đổi trạng thái")
 
-    sql = ("SET NOCOUNT ON; SELECT HoTen + '|' + cachTinhHocPhi + '|' + trangThai FROM HocSinh; "
-           "SELECT HoTen + '|' + vaiTro + '|' + trangThai FROM GiaoVien;")
-    du_lieu = subprocess.run(["sqlcmd", "-S", r".\SQLEXPRESS", "-d", "ClassManagement", "-E", "-W", "-Q", sql],
-                             capture_output=True, text=True, encoding="utf-8", errors="replace").stdout or ""
+    sql = ("SELECT \"HoTen\" || '|' || \"CachTinhHocPhi\" || '|' || \"TrangThai\" FROM \"HocSinh\"; "
+           "SELECT \"HoTen\" || '|' || \"VaiTro\" || '|' || \"TrangThai\" FROM \"GiaoVien\";")
+    du_lieu = chay_sql(sql)
     print("  Dữ liệu thô trong SQL:\n" + "\n".join("    " + d for d in du_lieu.splitlines()))
     kiem_tra("theo_buoi" in du_lieu and "theo_thang" in du_lieu,
              "enum trong database lưu đúng chuỗi như API trả về (theo_buoi / theo_thang)")

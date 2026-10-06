@@ -27,6 +27,8 @@ import urllib.parse
 import urllib.request
 from datetime import date, datetime, timedelta
 
+import kiem_thu_pg
+
 API = "http://localhost:5080"
 THU_MUC_API = r"c:\Joel_vh\ClassManagement\backend\ClassManagement.Api"
 EMAIL_ADMIN = "admin@classmanagement.local"
@@ -150,29 +152,27 @@ def phien_tu_cookie(cookie: dict[str, str]):
 
 
 def doc_so_sql(cau: str) -> int:
-    out = subprocess.run(
-        ["sqlcmd", "-S", r".\SQLEXPRESS", "-d", "ClassManagement", "-E", "-h", "-1", "-W", "-w", "800", "-I", "-Q", cau],
-        capture_output=True, text=True, encoding="utf-8", errors="replace").stdout or ""
+    out = kiem_thu_pg.chay_sql(cau)
     for dong in out.splitlines():
         dong = dong.strip()
         if dong.startswith("CM=") and dong[3:].strip().isdigit():
             return int(dong[3:].strip())
-    raise SystemExit("Không đọc được số từ sqlcmd:\n" + out)
+    raise SystemExit("Không đọc được số từ Postgres:\n" + out)
 
 
 def dem_buoi_can_dong_bo(email: str, tu: date, den: date) -> int:
     return doc_so_sql(
-        "SET NOCOUNT ON; SELECT 'CM=' + CAST(COUNT(*) AS varchar) FROM BuoiHoc b "
-        "JOIN GiaoVien g ON g.Id = b.GiaoVienId "
-        f"WHERE g.Email = '{email}' AND b.Ngay >= '{tu:%Y%m%d}' AND b.Ngay <= '{den:%Y%m%d}' "
-        "AND NOT EXISTS (SELECT 1 FROM DiemDanh dd WHERE dd.BuoiHocId = b.Id AND dd.TrangThai = N'nghi');")
+        "SELECT 'CM=' || COUNT(*) FROM \"BuoiHoc\" b "
+        "JOIN \"GiaoVien\" g ON g.\"Id\" = b.\"GiaoVienId\" "
+        f"WHERE g.\"Email\" = '{email}' AND b.\"Ngay\" >= '{tu:%Y-%m-%d}' AND b.\"Ngay\" <= '{den:%Y-%m-%d}' "
+        "AND NOT EXISTS (SELECT 1 FROM \"DiemDanh\" dd WHERE dd.\"BuoiHocId\" = b.\"Id\" AND dd.\"TrangThai\" = 'nghi');")
 
 
 def dem_buoi_da_len_google(email: str) -> int:
     return doc_so_sql(
-        "SET NOCOUNT ON; SELECT 'CM=' + CAST(COUNT(*) AS varchar) FROM BuoiHoc b "
-        "JOIN GiaoVien g ON g.Id = b.GiaoVienId "
-        f"WHERE g.Email = '{email}' AND b.GoogleEventId IS NOT NULL;")
+        "SELECT 'CM=' || COUNT(*) FROM \"BuoiHoc\" b "
+        "JOIN \"GiaoVien\" g ON g.\"Id\" = b.\"GiaoVienId\" "
+        f"WHERE g.\"Email\" = '{email}' AND b.\"GoogleEventId\" IS NOT NULL;")
 
 
 def main() -> int:
@@ -197,9 +197,9 @@ def main() -> int:
     for token in (token_a, token_admin):
         goi("/api/google-calendar/ngat-ket-noi", method="POST", token=token, body={"xoaSuKienDaTao": True})
     # Giáo viên B chưa có token ở đây (sẽ đăng nhập bằng Google), nên dọn bằng SQL cho chắc.
-    doc_so_sql("SET NOCOUNT ON; UPDATE BuoiHoc SET GoogleEventId = NULL, GoogleDongBoUtc = NULL SELECT 'CM=0';")
-    doc_so_sql("SET NOCOUNT ON; UPDATE GiaoVien SET GoogleTaiKhoan = NULL, GoogleCalendarId = NULL, "
-               "GoogleRefreshTokenMaHoa = NULL SELECT 'CM=0';")
+    doc_so_sql("UPDATE \"BuoiHoc\" SET \"GoogleEventId\" = NULL, \"GoogleDongBoUtc\" = NULL; SELECT 'CM=0';")
+    doc_so_sql("UPDATE \"GiaoVien\" SET \"GoogleTaiKhoan\" = NULL, \"GoogleCalendarId\" = NULL, "
+               "\"GoogleRefreshTokenMaHoa\" = NULL; SELECT 'CM=0';")
     goi("/api/google-calendar/gia-xoa-dau-vet", method="POST")
     kiem_tra(True, "đã dọn kết nối và id sự kiện cũ")
 
@@ -224,12 +224,12 @@ def main() -> int:
 
     print("== 2. Email Google lạ thì TỰ TẠO tài khoản giáo viên (không phải admin) ==")
     email_la = "nguoi.moi.bang.google@vidu.vn"
-    doc_so_sql("SET NOCOUNT ON; DELETE FROM GiaoVien WHERE Email = '" + email_la + "'; SELECT 'CM=0';")
+    doc_so_sql("DELETE FROM \"GiaoVien\" WHERE \"Email\" = '" + email_la + "'; SELECT 'CM=0';")
     ma1, _, ma2, vi_tri2, cookie_la = dang_nhap_bang_google(email_la)
     kiem_tra(ma2 == 302 and COOKIE_PHIEN in cookie_la and "dang-nhap-thanh-cong" in vi_tri2,
              "email Google chưa có tài khoản thì tạo mới rồi vào luôn")
-    kiem_tra(doc_so_sql("SET NOCOUNT ON; SELECT 'CM=' + CAST(COUNT(*) AS varchar) FROM GiaoVien "
-                        f"WHERE Email = '{email_la}' AND VaiTro = 'giao_vien';") == 1,
+    kiem_tra(doc_so_sql("SELECT 'CM=' || COUNT(*) FROM \"GiaoVien\" "
+                        f"WHERE \"Email\" = '{email_la}' AND \"VaiTro\" = 'giao_vien';") == 1,
              "tài khoản tạo bằng Google có vai trò giáo viên, không phải admin")
 
     print("== 3. Kết nối lịch từ Cài đặt (giáo viên A) ==")
@@ -313,19 +313,19 @@ def main() -> int:
     ung_vien = list(than["duLieu"])[:2]
     kiem_tra(len(ung_vien) == 2, f"chọn 2 buổi trong kỳ để thử: {[b['tenHocSinh'] for b in ung_vien]}")
     buoi_nghi, buoi_sua = ung_vien[0], ung_vien[1]
-    doc_so_sql("SET NOCOUNT ON; DELETE dd FROM DiemDanh dd WHERE dd.BuoiHocId IN "
+    doc_so_sql("DELETE FROM \"DiemDanh\" dd WHERE dd.\"BuoiHocId\" IN "
                f"('{buoi_nghi['id']}', '{buoi_sua['id']}'); SELECT 'CM=0';")
     goi("/api/google-calendar/dong-bo", method="POST", token=token_a, body={})
-    kiem_tra(doc_so_sql("SET NOCOUNT ON; SELECT 'CM=' + CAST(COUNT(*) AS varchar) FROM BuoiHoc "
-                        f"WHERE Id = '{buoi_nghi['id']}' AND GoogleEventId IS NOT NULL;") == 1,
+    kiem_tra(doc_so_sql("SELECT 'CM=' || COUNT(*) FROM \"BuoiHoc\" "
+                        f"WHERE \"Id\" = '{buoi_nghi['id']}' AND \"GoogleEventId\" IS NOT NULL;") == 1,
              "chuẩn bị xong: buổi sắp cho nghỉ đã có sự kiện trên lịch")
     ma, _ = goi("/api/attendance/luu-hang-loat", method="POST", token=token_a, body={"duLieu": [
         {"buoiHocId": buoi_nghi["id"], "trangThai": "nghi", "lyDoNghi": "co_phep", "ghiChu": "Học sinh báo nghỉ"}]})
     kiem_tra(ma == 200, f"điểm danh nghỉ -> HTTP {ma}")
     ma, kq_a3 = goi("/api/google-calendar/dong-bo", method="POST", token=token_a, body={})
     kiem_tra(kq_a3["soXoa"] == 1, f"buổi nghỉ bị gỡ khỏi Google: xoá {kq_a3['soXoa']}")
-    kiem_tra(doc_so_sql("SET NOCOUNT ON; SELECT 'CM=' + CAST(COUNT(*) AS varchar) FROM BuoiHoc "
-                        f"WHERE Id = '{buoi_nghi['id']}' AND GoogleEventId IS NOT NULL;") == 0,
+    kiem_tra(doc_so_sql("SELECT 'CM=' || COUNT(*) FROM \"BuoiHoc\" "
+                        f"WHERE \"Id\" = '{buoi_nghi['id']}' AND \"GoogleEventId\" IS NOT NULL;") == 0,
              "buổi đã nghỉ không còn id sự kiện")
     kiem_tra(dem_buoi_da_len_google(EMAIL_CO_HA) == so_buoi_b, "sự kiện của B vẫn nguyên")
 

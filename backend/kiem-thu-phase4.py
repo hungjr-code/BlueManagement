@@ -19,6 +19,8 @@ import zipfile
 from datetime import date, datetime, timedelta
 from io import BytesIO
 
+import kiem_thu_pg
+
 API = "http://localhost:5080"
 THU_MUC_API = r"c:\Joel_vh\ClassManagement\backend\ClassManagement.Api"
 EMAIL_ADMIN = "admin@classmanagement.local"
@@ -53,9 +55,7 @@ def doc_bi_mat() -> dict[str, str]:
 
 
 def chay_sql(cau: str) -> str:
-    return subprocess.run(
-        ["sqlcmd", "-S", r".\SQLEXPRESS", "-d", "ClassManagement", "-E", "-h", "-1", "-W", "-w", "800", "-I", "-Q", cau],
-        capture_output=True, text=True, encoding="utf-8", errors="replace").stdout or ""
+    return kiem_thu_pg.chay_sql(cau)
 
 
 def doc_so_sql(cau: str) -> float:
@@ -63,7 +63,7 @@ def doc_so_sql(cau: str) -> float:
         dong = dong.strip()
         if dong.startswith("CM="):
             return float(dong[3:].strip().replace(",", "."))
-    raise SystemExit("Không đọc được số từ sqlcmd:\n" + chay_sql(cau))
+    raise SystemExit("Không đọc được số từ Postgres:\n" + chay_sql(cau))
 
 
 def doc_chuoi_sql(cau: str) -> str:
@@ -77,21 +77,21 @@ def dem_theo_sql(tinh_nghi_khong_phep: bool) -> tuple[float, int]:
     """Tính lại tổng học phí của kỳ bằng SQL, độc lập hoàn toàn với API."""
     cong_nghi_kp = "d.nghikp" if tinh_nghi_khong_phep else "0"
     tong = doc_so_sql(
-        "SET NOCOUNT ON; SELECT 'CM=' + CONVERT(varchar(40), CAST(SUM(CASE "
-        "WHEN hs.CachTinhHocPhi = 'theo_thang' THEN ISNULL(hs.HocPhiTheoThang, 0) "
-        f"ELSE ISNULL(hs.DonGiaTheoBuoi, 0) * (d.dihoc + {cong_nghi_kp}) END) AS decimal(18,2))) "
-        "FROM HocSinh hs JOIN (SELECT b.HocSinhId, "
-        "SUM(CASE WHEN dd.TrangThai = 'di_hoc' THEN 1 ELSE 0 END) AS dihoc, "
-        "SUM(CASE WHEN dd.TrangThai = 'nghi' AND dd.LyDoNghi = 'khong_phep' THEN 1 ELSE 0 END) AS nghikp, "
-        "COUNT(*) AS tong FROM BuoiHoc b LEFT JOIN DiemDanh dd ON dd.BuoiHocId = b.Id "
-        f"WHERE b.Ngay >= '{dau_thang:%Y%m%d}' AND b.Ngay <= '{cuoi_thang:%Y%m%d}' GROUP BY b.HocSinhId) d "
-        "ON d.HocSinhId = hs.Id WHERE hs.TrangThai <> 'da_nghi' AND d.tong > 0;")
+        "SELECT 'CM=' || CAST(SUM(CASE "
+        "WHEN hs.\"CachTinhHocPhi\" = 'theo_thang' THEN COALESCE(hs.\"HocPhiTheoThang\", 0) "
+        f"ELSE COALESCE(hs.\"DonGiaTheoBuoi\", 0) * (d.dihoc + {cong_nghi_kp}) END) AS numeric(18,2)) "
+        "FROM \"HocSinh\" hs JOIN (SELECT b.\"HocSinhId\", "
+        "SUM(CASE WHEN dd.\"TrangThai\" = 'di_hoc' THEN 1 ELSE 0 END) AS dihoc, "
+        "SUM(CASE WHEN dd.\"TrangThai\" = 'nghi' AND dd.\"LyDoNghi\" = 'khong_phep' THEN 1 ELSE 0 END) AS nghikp, "
+        "COUNT(*) AS tong FROM \"BuoiHoc\" b LEFT JOIN \"DiemDanh\" dd ON dd.\"BuoiHocId\" = b.\"Id\" "
+        f"WHERE b.\"Ngay\" >= '{dau_thang:%Y-%m-%d}' AND b.\"Ngay\" <= '{cuoi_thang:%Y-%m-%d}' GROUP BY b.\"HocSinhId\") d "
+        "ON d.\"HocSinhId\" = hs.\"Id\" WHERE hs.\"TrangThai\" <> 'da_nghi' AND d.tong > 0;")
 
     so_dong = int(doc_so_sql(
-        "SET NOCOUNT ON; SELECT 'CM=' + CONVERT(varchar(20), COUNT(*)) FROM HocSinh hs JOIN "
-        "(SELECT DISTINCT b.HocSinhId FROM BuoiHoc b WHERE b.Ngay >= "
-        f"'{dau_thang:%Y%m%d}' AND b.Ngay <= '{cuoi_thang:%Y%m%d}') d ON d.HocSinhId = hs.Id "
-        "WHERE hs.TrangThai <> 'da_nghi';"))
+        "SELECT 'CM=' || COUNT(*) FROM \"HocSinh\" hs JOIN "
+        "(SELECT DISTINCT b.\"HocSinhId\" FROM \"BuoiHoc\" b WHERE b.\"Ngay\" >= "
+        f"'{dau_thang:%Y-%m-%d}' AND b.\"Ngay\" <= '{cuoi_thang:%Y-%m-%d}') d ON d.\"HocSinhId\" = hs.\"Id\" "
+        "WHERE hs.\"TrangThai\" <> 'da_nghi';"))
 
     return tong, so_dong
 
@@ -150,18 +150,18 @@ def main() -> int:
     # Dọn sổ của kỳ để bài kiểm thử chạy lại được nhiều lần: xoá phiếu thu của kỳ, đưa học phí về
     # trạng thái chưa thu và mở chốt sổ nếu lần chạy trước để lại.
     goi("/api/settings", method="PUT", token=token_admin, body={"tinhTienNghiKhongPhep": True})
-    doc_so_sql("SET NOCOUNT ON; DELETE pt FROM PhieuThu pt JOIN HocPhi hp ON hp.Id = pt.HocPhiId "
-               f"WHERE hp.Thang = {thang} AND hp.Nam = {nam}; SELECT 'CM=0';")
-    doc_so_sql("SET NOCOUNT ON; UPDATE HocPhi SET SoTienDaThu = 0, TrangThaiThanhToan = 'chua_thu', "
-               f"DaChotSo = 0, NgayChotUtc = NULL WHERE Thang = {thang} AND Nam = {nam}; SELECT 'CM=0';")
+    doc_so_sql("DELETE FROM \"PhieuThu\" WHERE \"HocPhiId\" IN (SELECT hp.\"Id\" FROM \"HocPhi\" hp "
+               f"WHERE hp.\"Thang\" = {thang} AND hp.\"Nam\" = {nam}); SELECT 'CM=0';")
+    doc_so_sql("UPDATE \"HocPhi\" SET \"SoTienDaThu\" = 0, \"TrangThaiThanhToan\" = 'chua_thu', "
+               f"\"DaChotSo\" = false, \"NgayChotUtc\" = NULL WHERE \"Thang\" = {thang} AND \"Nam\" = {nam}; SELECT 'CM=0';")
     # Dòng sổ "ma": học sinh không còn buổi nào trong kỳ và chưa thu đồng nào — ví dụ em bị cho tạm nghỉ
     # giữa kỳ nên các buổi chưa dạy bị gỡ, để lại một dòng học phí vô nghĩa. Dòng CÓ tiền đã thu thì
     # KHÔNG đụng tới: đó là chứng từ, không phải rác.
-    doc_so_sql("SET NOCOUNT ON; DELETE hp FROM HocPhi hp WHERE hp.Thang = "
-               f"{thang} AND hp.Nam = {nam} AND hp.SoTienDaThu = 0 "
-               "AND NOT EXISTS (SELECT 1 FROM PhieuThu p WHERE p.HocPhiId = hp.Id) "
-               "AND NOT EXISTS (SELECT 1 FROM BuoiHoc b WHERE b.HocSinhId = hp.HocSinhId "
-               f"AND b.Ngay >= '{dau_thang:%Y%m%d}' AND b.Ngay <= '{cuoi_thang:%Y%m%d}'); SELECT 'CM=0';")
+    doc_so_sql("DELETE FROM \"HocPhi\" hp WHERE hp.\"Thang\" = "
+               f"{thang} AND hp.\"Nam\" = {nam} AND hp.\"SoTienDaThu\" = 0 "
+               "AND NOT EXISTS (SELECT 1 FROM \"PhieuThu\" p WHERE p.\"HocPhiId\" = hp.\"Id\") "
+               "AND NOT EXISTS (SELECT 1 FROM \"BuoiHoc\" b WHERE b.\"HocSinhId\" = hp.\"HocSinhId\" "
+               f"AND b.\"Ngay\" >= '{dau_thang:%Y-%m-%d}' AND b.\"Ngay\" <= '{cuoi_thang:%Y-%m-%d}'); SELECT 'CM=0';")
     kiem_tra(True, "đã dọn sổ của kỳ trước khi kiểm")
 
     print("== 1. Tính học phí kỳ từ điểm danh ==")
@@ -220,15 +220,15 @@ def main() -> int:
             so_vua_diem = next(d for d in goi(f"/api/tuition/ky?thang={thang}&nam={nam}", token=token_admin)[1]
                                if d["id"] == dong_theo_buoi["id"])
             # Đếm lại bằng SQL độc lập rồi so với cả số buổi lẫn thành tiền API trả về.
-            di_hoc = doc_so_sql("SET NOCOUNT ON; SELECT 'CM=' + CONVERT(varchar(20), COUNT(*)) FROM BuoiHoc b "
-                                "JOIN DiemDanh dd ON dd.BuoiHocId = b.Id AND dd.TrangThai = 'di_hoc' "
-                                f"WHERE b.HocSinhId = '{dong_theo_buoi['hocSinhId']}' "
-                                f"AND b.Ngay >= '{dau_thang:%Y%m%d}' AND b.Ngay <= '{cuoi_thang:%Y%m%d}';")
-            nghi_kp = doc_so_sql("SET NOCOUNT ON; SELECT 'CM=' + CONVERT(varchar(20), COUNT(*)) FROM BuoiHoc b "
-                                 "JOIN DiemDanh dd ON dd.BuoiHocId = b.Id AND dd.TrangThai = 'nghi' "
-                                 "AND dd.LyDoNghi = 'khong_phep' "
-                                 f"WHERE b.HocSinhId = '{dong_theo_buoi['hocSinhId']}' "
-                                 f"AND b.Ngay >= '{dau_thang:%Y%m%d}' AND b.Ngay <= '{cuoi_thang:%Y%m%d}';")
+            di_hoc = doc_so_sql("SELECT 'CM=' || COUNT(*) FROM \"BuoiHoc\" b "
+                                "JOIN \"DiemDanh\" dd ON dd.\"BuoiHocId\" = b.\"Id\" AND dd.\"TrangThai\" = 'di_hoc' "
+                                f"WHERE b.\"HocSinhId\" = '{dong_theo_buoi['hocSinhId']}' "
+                                f"AND b.\"Ngay\" >= '{dau_thang:%Y-%m-%d}' AND b.\"Ngay\" <= '{cuoi_thang:%Y-%m-%d}';")
+            nghi_kp = doc_so_sql("SELECT 'CM=' || COUNT(*) FROM \"BuoiHoc\" b "
+                                 "JOIN \"DiemDanh\" dd ON dd.\"BuoiHocId\" = b.\"Id\" AND dd.\"TrangThai\" = 'nghi' "
+                                 "AND dd.\"LyDoNghi\" = 'khong_phep' "
+                                 f"WHERE b.\"HocSinhId\" = '{dong_theo_buoi['hocSinhId']}' "
+                                 f"AND b.\"Ngay\" >= '{dau_thang:%Y-%m-%d}' AND b.\"Ngay\" <= '{cuoi_thang:%Y-%m-%d}';")
             mong_doi = dong_theo_buoi["donGiaApDung"] * (di_hoc + nghi_kp)
             kiem_tra(so_vua_diem["soBuoiDiHoc"] == int(di_hoc)
                      and so_vua_diem["soBuoiNghiKhongPhep"] == int(nghi_kp),
@@ -261,8 +261,8 @@ def main() -> int:
     print("== 4. Phân quyền: giáo viên chỉ thấy học sinh của mình ==")
     ma, so_a = goi(f"/api/tuition/ky?thang={thang}&nam={nam}", token=token_a)
     so_cua_a_sql = int(doc_so_sql(
-        "SET NOCOUNT ON; SELECT 'CM=' + CONVERT(varchar(20), COUNT(*)) FROM HocPhi hp JOIN GiaoVien g "
-        f"ON g.Id = hp.GiaoVienId WHERE g.Email = '{EMAIL_GV_MAU}' AND hp.Thang = {thang} AND hp.Nam = {nam};"))
+        "SELECT 'CM=' || COUNT(*) FROM \"HocPhi\" hp JOIN \"GiaoVien\" g "
+        f"ON g.\"Id\" = hp.\"GiaoVienId\" WHERE g.\"Email\" = '{EMAIL_GV_MAU}' AND hp.\"Thang\" = {thang} AND hp.\"Nam\" = {nam};"))
     kiem_tra(len(so_a) == so_cua_a_sql and len(so_a) < len(so),
              f"giáo viên A thấy {len(so_a)} dòng của mình, không thấy {len(so) - len(so_a)} dòng của người khác")
     kiem_tra(all(d["tenGiaoVien"] != "Cô Nguyễn Thu Hà" for d in so_a), "sổ của A không lẫn học sinh của cô Hà")
@@ -316,8 +316,8 @@ def main() -> int:
     ma, sau_huy = goi(f"/api/tuition/{dich['id']}", token=token_a)
     kiem_tra(sau_huy["hocPhi"]["soTienDaThu"] == mot_nua and len(sau_huy["danhSachPhieuThu"]) == 1,
              "tiền đã thu trả về đúng phần còn lại sau khi huỷ")
-    so_nhat_ky = int(doc_so_sql("SET NOCOUNT ON; SELECT 'CM=' + CONVERT(varchar(20), COUNT(*)) FROM NhatKy "
-                                "WHERE HanhDong = 'huy_phieu_thu';"))
+    so_nhat_ky = int(doc_so_sql("SELECT 'CM=' || COUNT(*) FROM \"NhatKy\" "
+                                "WHERE \"HanhDong\" = 'huy_phieu_thu';"))
     kiem_tra(so_nhat_ky >= 1, f"việc huỷ đã vào nhật ký ({so_nhat_ky} dòng)")
 
     print("== 7. Ai sắp đến hạn, ai quá hạn ==")
@@ -363,8 +363,8 @@ def main() -> int:
     kiem_tra(next(d for d in de_xuat if d["giaoDich"]["maGiaoDich"] == ma_am)["mucDoKhop"] == "khong_khop",
              "dòng tiền ra không bị coi là thu học phí")
 
-    so_phieu_truoc = int(doc_so_sql("SET NOCOUNT ON; SELECT 'CM=' + CONVERT(varchar(20), COUNT(*)) FROM PhieuThu;"))
-    kiem_tra(so_phieu_truoc == int(doc_so_sql("SET NOCOUNT ON; SELECT 'CM=' + CONVERT(varchar(20), COUNT(*)) FROM PhieuThu;")),
+    so_phieu_truoc = int(doc_so_sql("SELECT 'CM=' || COUNT(*) FROM \"PhieuThu\";"))
+    kiem_tra(so_phieu_truoc == int(doc_so_sql("SELECT 'CM=' || COUNT(*) FROM \"PhieuThu\";")),
              "phân tích KHÔNG ghi gì vào sổ (chỉ đọc)")
 
     ma, kq_ghep = goi("/api/tuition/doi-chieu/xac-nhan", method="POST", token=token_admin, body={"cacCap": [
@@ -402,8 +402,8 @@ def main() -> int:
         ma, kq_chot = goi("/api/tuition/chot-so", method="POST", token=token_admin, body={"thang": thang, "nam": nam})
 
     kiem_tra(ma == 200 and kq_chot["soDong"] == len(so_moi), f"chốt sổ {kq_chot['soDong']} dòng -> HTTP {ma}")
-    so_da_chot = int(doc_so_sql("SET NOCOUNT ON; SELECT 'CM=' + CONVERT(varchar(20), COUNT(*)) FROM HocPhi "
-                                f"WHERE Thang = {thang} AND Nam = {nam} AND DaChotSo = 1;"))
+    so_da_chot = int(doc_so_sql("SELECT 'CM=' || COUNT(*) FROM \"HocPhi\" "
+                                f"WHERE \"Thang\" = {thang} AND \"Nam\" = {nam} AND \"DaChotSo\" = true;"))
     kiem_tra(so_da_chot == len(so_moi), f"{so_da_chot} dòng đã đánh dấu chốt sổ trong database")
 
     ma, kq_sau_chot = goi("/api/tuition/tinh-ky", method="POST", token=token_admin, body={"thang": thang, "nam": nam})
@@ -415,11 +415,11 @@ def main() -> int:
     ma, kq_mo = goi("/api/tuition/mo-chot-so", method="POST", token=token_admin,
                     body={"thang": thang, "nam": nam, "lyDo": "Cần sửa điểm danh tháng này"})
     kiem_tra(ma == 200 and kq_mo["soDong"] == len(so_moi), f"mở chốt kèm lý do -> HTTP {ma}")
-    kiem_tra(int(doc_so_sql("SET NOCOUNT ON; SELECT 'CM=' + CONVERT(varchar(20), COUNT(*)) FROM HocPhi "
-                            f"WHERE Thang = {thang} AND Nam = {nam} AND DaChotSo = 1;")) == 0,
+    kiem_tra(int(doc_so_sql("SELECT 'CM=' || COUNT(*) FROM \"HocPhi\" "
+                            f"WHERE \"Thang\" = {thang} AND \"Nam\" = {nam} AND \"DaChotSo\" = true;")) == 0,
              "mở chốt xong thì không dòng nào còn bị khoá")
-    kiem_tra(int(doc_so_sql("SET NOCOUNT ON; SELECT 'CM=' + CONVERT(varchar(20), COUNT(*)) FROM NhatKy "
-                            "WHERE HanhDong IN ('mo_chot_so_hoc_phi','chot_so_hoc_phi');")) >= 2,
+    kiem_tra(int(doc_so_sql("SELECT 'CM=' || COUNT(*) FROM \"NhatKy\" "
+                            "WHERE \"HanhDong\" IN ('mo_chot_so_hoc_phi','chot_so_hoc_phi');")) >= 2,
              "cả chốt sổ và mở chốt đều có vết trong nhật ký")
     ma, than = goi("/api/tuition/chot-so", method="POST", token=token_a,
                    body={"thang": thang, "nam": nam, "boQuaCanhBao": True})

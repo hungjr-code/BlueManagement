@@ -33,3 +33,7 @@ desktop.ini
 # Log và file tạm khi kiểm thử
 *.log
 raspbian.img
+
+# Python sinh ra khi script kiểm thử import module chung
+__pycache__/
+*.pyc
