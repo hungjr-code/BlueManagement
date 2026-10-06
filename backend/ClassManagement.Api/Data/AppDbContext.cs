@@ -246,7 +246,7 @@ public class AppDbContext : IdentityUserContext<GiaoVien, Guid>
         // Một giao dịch ngân hàng chỉ được gắn vào đúng một phiếu thu.
         phieuThu.HasIndex(x => x.MaGiaoDichNganHang)
             .IsUnique()
-            .HasFilter("[MaGiaoDichNganHang] IS NOT NULL");
+            .HasFilter("\"MaGiaoDichNganHang\" IS NOT NULL");
     }
 
     private static void CauHinhCaiDat(ModelBuilder moHinh)

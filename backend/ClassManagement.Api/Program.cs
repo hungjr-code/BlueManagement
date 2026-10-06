@@ -14,6 +14,11 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 
+// Npgsql: giữ cách hiểu thời gian như thời SQL Server — giờ học lưu theo GIỜ TƯỜNG Việt Nam,
+// không phải UTC, nên DateTime đi vào `timestamp without time zone`. Phải đặt trước khi Npgsql
+// được dùng lần đầu (cả lúc chạy app lẫn lúc `dotnet ef`).
+AppContext.SetSwitch("Npgsql.EnableLegacyTimestampBehavior", true);
+
 var builder = WebApplication.CreateBuilder(args);
 
 /* ------------------------------------------------------------------ *
@@ -22,10 +27,10 @@ var builder = WebApplication.CreateBuilder(args);
 
 var chuoiKetNoi = builder.Configuration.GetConnectionString("MacDinh")
     ?? throw new InvalidOperationException(
-        "Thiếu ConnectionStrings:MacDinh trong appsettings.json. Ví dụ cho SQL Server Express:\n"
-        + "  Server=.\\SQLEXPRESS;Database=ClassManagement;Trusted_Connection=True;TrustServerCertificate=True");
+        "Thiếu ConnectionStrings:MacDinh trong appsettings.json. Ví dụ cho PostgreSQL:\n"
+        + "  Host=...;Port=5432;Database=postgres;Username=...;Password=...;SSL Mode=Require;Trust Server Certificate=true");
 
-builder.Services.AddDbContext<AppDbContext>(tuyChon => tuyChon.UseSqlServer(chuoiKetNoi));
+builder.Services.AddDbContext<AppDbContext>(tuyChon => tuyChon.UseNpgsql(chuoiKetNoi));
 
 /* ------------------------------------------------------------------ *
  * 1b. Khoá mã hoá (Data Protection)

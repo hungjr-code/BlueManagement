@@ -56,7 +56,7 @@ public class StudentsController(
         if (!string.IsNullOrWhiteSpace(tuKhoa))
         {
             var tuKhoaChuan = tuKhoa.Trim();
-            truyVan = truyVan.Where(x => EF.Functions.Like(x.HoTen, "%" + tuKhoaChuan + "%"));
+            truyVan = truyVan.Where(x => EF.Functions.ILike(x.HoTen, "%" + tuKhoaChuan + "%"));
         }
 
         var (trangChuan, kichThuocChuan) = TeachersController.ChuanHoaPhanTrang(trang, kichThuoc);

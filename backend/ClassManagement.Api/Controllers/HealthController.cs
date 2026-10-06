@@ -46,9 +46,13 @@ public class HealthController(
         }
 
         var phienBan = typeof(HealthController).Assembly.GetName().Version?.ToString(3) ?? "0.0.0";
-        var nhaCungCap = db.Database.ProviderName?.Contains("SqlServer", StringComparison.Ordinal) == true
-            ? "SQL Server"
-            : db.Database.ProviderName ?? "Không rõ";
+        var nhaCungCap = db.Database.ProviderName switch
+        {
+            string ten when ten.Contains("Npgsql", StringComparison.Ordinal) => "PostgreSQL",
+            string ten when ten.Contains("SqlServer", StringComparison.Ordinal) => "SQL Server",
+            string ten => ten,
+            null => "Không rõ",
+        };
 
         return Ok(new HealthResponse(
             ketNoiDuoc ? "ok" : "degraded",

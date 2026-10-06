@@ -97,7 +97,7 @@ public class DichVuBuoiHoc(AppDbContext db, ILogger<DichVuBuoiHoc> ghiLog)
         {
             await db.SaveChangesAsync(huyBo);
         }
-        catch (DbUpdateException loi) when (loi.InnerException is Microsoft.Data.SqlClient.SqlException { Number: 2601 or 2627 })
+        catch (DbUpdateException loi) when (loi.InnerException is Npgsql.PostgresException { SqlState: Npgsql.PostgresErrorCodes.UniqueViolation })
         {
             // Hai request cùng sinh buổi một lúc: chỉ mục duy nhất đã chặn bản ghi trùng,
             // buổi học đã có người sinh trước nên không cần làm gì thêm.
