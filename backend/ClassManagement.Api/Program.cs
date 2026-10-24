@@ -25,10 +25,57 @@ var builder = WebApplication.CreateBuilder(args);
  * 1. Cơ sở dữ liệu
  * ------------------------------------------------------------------ */
 
-var chuoiKetNoi = builder.Configuration.GetConnectionString("MacDinh")
+// .Trim(): dán biến môi trường trên máy chủ hay dính thêm khoảng trắng/xuống dòng ở cuối, mà dấu cách
+// lọt vào cuối chuỗi thì Npgsql báo "password authentication failed" — nhìn không ra nguyên nhân.
+var chuoiKetNoi = (builder.Configuration.GetConnectionString("MacDinh")
     ?? throw new InvalidOperationException(
         "Thiếu ConnectionStrings:MacDinh trong appsettings.json. Ví dụ cho PostgreSQL:\n"
-        + "  Host=...;Port=5432;Database=postgres;Username=...;Password=...;SSL Mode=Require;Trust Server Certificate=true");
+        + "  Host=...;Port=5432;Database=postgres;Username=...;Password=...;SSL Mode=Require;Trust Server Certificate=true")).Trim();
+
+// Mô tả chuỗi kết nối mà KHÔNG in mật khẩu — dùng khi không kết nối được database, để biết ngay máy
+// chủ đang nhận được gì: sai host? thiếu project-ref? mật khẩu bị dán kèm dấu cách? Độ dài mật khẩu
+// cũng là thứ so được với mật khẩu thật (ví dụ 16 ký tự) để phát hiện dán thiếu ký tự.
+static string MoTaChuoiKetNoi(string chuoi)
+{
+    var phan = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+    foreach (var manh in chuoi.Split(';', StringSplitOptions.RemoveEmptyEntries))
+    {
+        var cat = manh.Split('=', 2);
+        if (cat.Length == 2)
+        {
+            phan[cat[0].Trim()] = cat[1];
+        }
+    }
+
+    string Lay(string ten) => phan.TryGetValue(ten, out var giaTri) ? giaTri : "(thiếu)";
+
+    var matKhau = Lay("Password");
+    var canhBao = new List<string>();
+
+    if (matKhau != matKhau.Trim())
+    {
+        canhBao.Add("mật khẩu CÓ khoảng trắng ở đầu/cuối");
+    }
+
+    if (chuoi != chuoi.Trim())
+    {
+        canhBao.Add("chuỗi có khoảng trắng/xuống dòng thừa ở hai đầu");
+    }
+
+    if (chuoi.Contains("://", StringComparison.Ordinal))
+    {
+        canhBao.Add("đang ở dạng URI (postgresql://…) — Npgsql cần dạng Host=…;Port=…;Username=…;Password=…");
+    }
+
+    if (phan.TryGetValue("Username", out var nguoiDung) && !nguoiDung.Contains('.'))
+    {
+        canhBao.Add("Username thiếu phần .<project-ref> (pooler Supabase cần dạng postgres.<ref>)");
+    }
+
+    return $"Host={Lay("Host")};Port={Lay("Port")};Database={Lay("Database")};Username={Lay("Username")};"
+        + $"mật khẩu dài {matKhau.Length} ký tự"
+        + (canhBao.Count > 0 ? " ⚠ " + string.Join(" | ", canhBao) : string.Empty);
+}
 
 builder.Services.AddDbContext<AppDbContext>(tuyChon => tuyChon.UseNpgsql(chuoiKetNoi));
 
@@ -256,24 +303,41 @@ using (var phamVi = app.Services.CreateScope())
             tuyChonGoogle.RedirectUri, tuyChonGoogle.RedirectUriDangNhap, tuyChonGoogle.FrontendUrl);
     }
 
-    if (app.Environment.IsDevelopment())
+    // Bọc CẢ phần migration lẫn phần seed: hỏng ở bước nào cũng phải đọc được lý do. Trước đây lỗi
+    // migration ở máy dev ném ra ngoài try/catch nên log chỉ có stack trace của Npgsql.
+    try
     {
-        // Máy dev thì tự chạy migration cho tiện. Máy chạy thật phải chạy tay bằng
-        // "dotnet ef database update" để không có chuyện tự sửa database khi khởi động.
-        await db.Database.MigrateAsync();
-    }
-    else if (!await db.Database.CanConnectAsync())
-    {
-        ghiLog.LogWarning(
-            "Không kết nối được database ở môi trường {MoiTruong}. Chạy migration bằng lệnh: dotnet ef database update",
-            app.Environment.EnvironmentName);
-    }
+        if (app.Environment.IsDevelopment())
+        {
+            // Máy dev thì tự chạy migration cho tiện. Máy chạy thật phải chạy tay bằng
+            // "dotnet ef database update" để không có chuyện tự sửa database khi khởi động.
+            await db.Database.MigrateAsync();
+        }
+        else if (!await db.Database.CanConnectAsync())
+        {
+            ghiLog.LogWarning(
+                "Không kết nối được database ở môi trường {MoiTruong}. Máy chủ đang nhận: {MoTa}. "
+                + "Đối chiếu với Supabase > Connect > Shared pooler rồi sửa ConnectionStrings__MacDinh.",
+                app.Environment.EnvironmentName, MoTaChuoiKetNoi(chuoiKetNoi));
+        }
 
-    await DbSeeder.ChayAsync(
-        db,
-        dichVu.GetRequiredService<UserManager<GiaoVien>>(),
-        tuyChonSeed,
-        ghiLog);
+        await DbSeeder.ChayAsync(
+            db,
+            dichVu.GetRequiredService<UserManager<GiaoVien>>(),
+            tuyChonSeed,
+            ghiLog);
+    }
+    catch (Exception loi)
+    {
+        // Không kết nối được database thì app PHẢI dừng (DbSeeder chạy trước app.Run()) — nhưng log phải
+        // nói được vì sao. Đọc mã lỗi của Postgres: 28P01 sai mật khẩu · 3D000 sai tên database ·
+        // XX000 "tenant/user … not found" là sai project-ref hoặc project Supabase đang bị tạm dừng.
+        ghiLog.LogError(
+            loi,
+            "Không khởi động được vì database. Máy chủ đang nhận: {MoTa}",
+            MoTaChuoiKetNoi(chuoiKetNoi));
+        throw;
+    }
 }
 
 app.Run();
