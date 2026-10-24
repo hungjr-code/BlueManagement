@@ -11,7 +11,7 @@ interface NhomNgay {
   buoi: BuoiHoc[]
 }
 
-/** Buổi học xếp theo ngày rồi theo giờ — đúng thứ tự người dạy đọc lịch. */
+/** Buổi học xếp theo ngày rồi theo giờ. */
 function nhomTheoNgay(duLieu: BuoiHoc[]): NhomNgay[] {
   const sapXep = [...duLieu].sort(
     (a, b) =>
@@ -35,13 +35,11 @@ function nhomTheoNgay(duLieu: BuoiHoc[]): NhomNgay[] {
 
 interface LichDayTuanProps {
   tuan: TuanNay
-  /** Tên giáo viên đang lọc (chỉ admin), để câu chữ khỏi nói sai khi bảng đang bị lọc. */
   tenGiaoVienLoc?: string | null
 }
 
 /**
- * Lịch dạy của tuần hiện tại, nhóm theo từng ngày. Dữ liệu từ `GET /api/dashboard/tuan-nay`:
- * số buổi ở đây là buổi thật backend sinh ra từ lịch học hằng tuần của học sinh.
+ * Lịch dạy của tuần hiện tại, nhóm theo từng ngày.
  */
 export function LichDayTuan({ tuan, tenGiaoVienLoc }: LichDayTuanProps) {
   const dieuHuong = useNavigate()
@@ -82,7 +80,7 @@ export function LichDayTuan({ tuan, tenGiaoVienLoc }: LichDayTuanProps) {
           {nhom.map((dong) => (
             <div key={dong.ngay}>
               <Space wrap style={{ marginBottom: 8 }}>
-                <CalendarOutlined />
+                <CalendarOutlined style={{ color: '#5B8DEF' }} />
                 <Typography.Text strong>
                   {tenThu(thuCua(dong.ngay))}, {ngayNgan(dong.ngay)}
                 </Typography.Text>
@@ -101,11 +99,6 @@ export function LichDayTuan({ tuan, tenGiaoVienLoc }: LichDayTuanProps) {
           ))}
         </Flex>
       )}
-
-      <Typography.Paragraph type="secondary" style={{ marginTop: 16, marginBottom: 0, fontSize: 12 }}>
-        Buổi học do backend sinh ra từ lịch học lặp hằng tuần của học sinh. Chưa điểm danh KHÁC với
-        nghỉ: buổi bỏ trống chưa sinh ra tiền và vẫn phải xử lý trước khi chốt sổ tháng.
-      </Typography.Paragraph>
     </Card>
   )
 }

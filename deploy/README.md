@@ -2,49 +2,50 @@
 
 Bản chạy thật dùng **một tên miền duy nhất** cho cả giao diện lẫn API. Đây không phải chuyện thẩm mỹ:
 cookie phiên là `SameSite=Lax` và backend **không bật CORS**, nên nếu giao diện nằm ở tên miền khác API
-(ví dụ `*.vercel.app` gọi `*.onrender.com`) thì trình duyệt sẽ **chặn cookie phiên** và người dùng đăng
+(ví dụ `*.github.io` gọi `*.onrender.com`) thì trình duyệt sẽ **chặn cookie phiên** — người dùng đăng
 nhập xong là mất phiên.
 
 Cách làm: build giao diện rồi nhúng vào `wwwroot` của API — `Program.cs` tự phục vụ và tự trả
-`index.html` cho mọi đường dẫn không phải API.
+`index.html` cho mọi đường dẫn không phải API. Vì vậy **không cần** GitHub Pages cho giao diện; thư mục
+`website/` chỉ dùng cho 3 trang tĩnh Google yêu cầu (trang chủ + quyền riêng tư + điều khoản).
 
-## 1. Chuẩn bị trên máy chủ
+## Kiến trúc đang dùng
 
-| Cần | Ghi chú |
-|---|---|
-| .NET 9 (ASP.NET Core Runtime) | Hoặc dùng image Docker `mcr.microsoft.com/dotnet/aspnet:9.0` |
-| SQL Server (hoặc Azure SQL) | Giữ nguyên vì app dùng `Microsoft.Data.SqlClient` |
-| Ổ đĩa **bền** cho khoá Data Protection | Thư mục này **phải nằm trong bản sao lưu** cùng database |
-| HTTPS | Bắt buộc với Google khi không còn là `localhost` (Caddy/Nginx + Let's Encrypt, hoặc chứng chỉ của nền tảng) |
+| Thành phần | Ở đâu | Ghi chú |
+|---|---|---|
+| Giao diện + API | **Một** web service Docker (Render free) | `deploy/render/Dockerfile`, context = gốc repo |
+| Database | **PostgreSQL trên Supabase** (free) | Shared/Session pooler, có SSL |
+| Mã nguồn | GitHub `hungjr-code/BlueManagement` | Render tự kéo code từ đây |
 
-Biến môi trường **bắt buộc** (thay cho user-secrets của máy dev — máy chủ **không** đọc user-secrets):
+Nền tảng khác (Azure App Service + Azure SQL, VPS) đều chạy được với cùng Dockerfile; chỉ khác nơi
+cấu hình biến môi trường.
+
+## 1. Biến môi trường (máy chủ KHÔNG đọc user-secrets)
+
+Ở Production mọi giá trị phải đặt bằng biến môi trường của host:
 
 ```
 ASPNETCORE_ENVIRONMENT=Production
-ConnectionStrings__MacDinh=Server=...;Database=ClassManagement;User Id=...;Password=...;Encrypt=True;TrustServerCertificate=False
+ASPNETCORE_FORWARDEDHEADERS_ENABLED=true          # bắt buộc sau reverse proxy, nếu không cookie phiên không có cờ Secure
+
+ConnectionStrings__MacDinh=Host=aws-0-ap-northeast-2.pooler.supabase.com;Port=5432;Database=postgres;Username=postgres.<ref>;Password=<mk>;SSL Mode=Require;Trust Server Certificate=true
 Jwt__Key=<chuỗi ngẫu nhiên ≥32 ký tự>
 Seed__Admin__MatKhau=<mật khẩu admin đầu tiên>
-DataProtection__ThuMucKhoa=/var/classmanagement/khoa-bao-mat      (Windows: C:\ClassManagement\khoa-bao-mat)
+DataProtection__ThuMucKhoa=/app/khoa-bao-mat
 
 # Chỉ khi dùng Google thật:
 GoogleCalendar__ClientId=<client id>
 GoogleCalendar__ClientSecret=<client secret>
+GoogleCalendar__RedirectUri=https://<ten-mien>/api/google-calendar/callback
+GoogleCalendar__RedirectUriDangNhap=https://<ten-miền>/api/auth/google/callback
+GoogleCalendar__FrontendUrl=https://<ten-mien>
 
-# Chỉ khi gửi thư thật:
+# Chỉ khi gửi thư thật (quên mật khẩu):
 Email__SmtpHost / Email__SmtpPort / Email__SmtpTaiKhoan / Email__SmtpMatKhau / Email__TuDiaChi
 ```
 
-Nếu chạy **sau reverse proxy** (Nginx/Caddy/App Service) thì thêm:
-
-```
-ASPNETCORE_FORWARDEDHEADERS_ENABLED=true
-```
-
-Thiếu biến này thì `Request.IsHttps` luôn là `false` và cookie phiên sẽ **không được gắn cờ `Secure`**
-dù trình duyệt đang dùng HTTPS.
-
-Sửa các chỗ `THAY-BANG-...` trong `appsettings.Production.json` (tệp này **không chứa bí mật**, chỉ có
-địa chỉ và đường dẫn).
+Các chỗ `THAY-BANG-...` trong `appsettings.Production.json` (tệp này **không chứa bí mật**, chỉ có địa
+chỉ và đường dẫn) phải được thay hoặc để biến môi trường đè lên.
 
 ## 2. Đóng gói
 
@@ -53,72 +54,77 @@ Sửa các chỗ `THAY-BANG-...` trong `appsettings.Production.json` (tệp này
 ./deploy/build.sh --chay     # đóng gói rồi chạy thử ở chế độ Production ngay trên máy này
 ```
 
-Kết quả là thư mục `deploy/publish` — copy nguyên thư mục đó lên máy chủ, chạy bằng:
+Kết quả là thư mục `deploy/publish` — copy lên máy chủ và chạy:
 
 ```bash
 ASPNETCORE_URLS=http://127.0.0.1:5080 dotnet ClassManagement.Api.dll
 ```
 
+Hoặc đóng gói bằng Docker (Render dùng đúng lệnh này):
+
+```bash
+docker build -f deploy/render/Dockerfile -t bluemanagement:test .
+```
+
 ## 3. Tạo/cập nhật database (làm MỘT lần, trước khi chạy app)
 
-Ở môi trường Production app **cố tình không tự chạy migration** khi khởi động (không để app tự sửa
-database). Chạy tay từ máy có mã nguồn:
+Ở Production app **cố tình không tự chạy migration** khi khởi động (không để app tự sửa database). Chạy
+tay từ máy có mã nguồn, trỏ vào chuỗi kết nối Supabase:
 
 ```bash
 cd backend/ClassManagement.Api
-ConnectionStrings__MacDinh="<chuỗi kết nối của máy chủ>" dotnet dotnet-ef database update
+ConnectionStrings__MacDinh="<chuỗi kết nối Supabase>" dotnet dotnet-ef database update
 ```
 
-## 4. Kiểm tra sau khi lên
+## 4. Deploy lên Render (free)
 
-1. `GET https://<ten-mien>/api/health` → `database.canConnect = true`.
-2. Mở `https://<ten-mien>/` → trang đăng nhập hiện ra (đây là giao diện tĩnh nằm cùng tên miền).
-3. Đăng nhập admin → mở **Lịch dạy**, **Điểm danh**, **Học phí**, **Nhật ký**.
-4. Đăng nhập bằng Google (nếu đã khai Client ID/Secret) → vào **Cài đặt** thấy "đã kết nối", vào **Lịch dạy** bấm *Đồng bộ* rồi mở Google Calendar xem sự kiện.
-5. Chạy lại **một lần** các bộ kiểm thử trên máy chủ (chúng gọi `http://localhost:5080`, nên chạy ngay
-   trên máy chủ hoặc qua SSH tunnel):
-   ```bash
-   cd backend && python kiem-thu-phase1.py    # 63 bước, không cần cấu hình gì thêm
-   ```
-   Bốn bộ còn lại: phase2 (48), phase4 (66), phase6 (37) chạy ở chế độ thật; phase3 (55) và phase5 (43)
-   cần `GoogleCalendar__CheDoGia=true Email__CheDoGia=true` — **chỉ bật ở máy dev**, đừng bật trên máy chủ thật.
+1. Render Dashboard → **New → Blueprint** → chọn repo `hungjr-code/BlueManagement`. Render đọc
+   `render.yaml` ở gốc repo và dựng sẵn web service (Docker, gói free).
+2. Điền các biến `sync: false` khi Render hỏi (chuỗi kết nối Supabase, mật khẩu admin, Google sau).
+3. Lần deploy đầu sẽ chạy `dotnet ef`? **Không** — phải tự chạy migration ở bước 3 trước, hoặc sau khi
+   service sống thì chạy migration trỏ vào Supabase.
+4. Gắn tên miền riêng: Render → Settings → Custom Domain → thêm `ten-mien-cua-ban` → trỏ DNS theo hướng
+   dẫn của Render (HTTPS miễn phí). Gói free **có** hỗ trợ tên miền riêng.
+
+### Gói free — những giới hạn phải biết trước khi đưa dùng thật
+
+- Web service **ngủ sau ~15 phút** không có request; lần mở đầu tiên sau đó chờ ~1 phút.
+- **Ổ đĩa TẠM**: mỗi lần deploy lại là mất `DataProtection__ThuMucKhoa` ⇒ mọi refresh token Google đã
+  mã hoá không giải mã được ⇒ **tất cả giáo viên phải kết nối lại Google**. Xem mục 6.
 
 ## 5. Google Cloud khi đã có tên miền
 
 - Khai lại **cả hai** redirect URI theo tên miền thật:
   `https://<ten-mien>/api/auth/google/callback` và `https://<ten-mien>/api/google-calendar/callback`.
-- Sửa `GoogleCalendar:RedirectUri`, `RedirectUriDangNhap`, `FrontendUrl` trong `appsettings.Production.json`.
+- Sửa `GoogleCalendar__RedirectUri`, `RedirectUriDangNhap`, `FrontendUrl` (biến môi trường trên host).
 - Chuyển OAuth consent screen sang **In production** (nếu để *Testing* mà xin quyền `calendar.events` thì
   refresh token **hết hạn sau 7 ngày**, giáo viên phải nối lại mỗi tuần).
-- Ba ô App domain (home page / privacy policy / terms) giờ mới cần: đưa 3 trang trong `website/` lên
-  một host tĩnh miễn phí (GitHub Pages / Cloudflare Pages) rồi dán link vào.
+- Ba ô App domain (home page / privacy policy / terms) chỉ cần khi app ở production: đưa 3 trang trong
+  `website/` lên chính tên miền đó (xem `website/README.md`).
 
-## 6. Sao lưu (đừng bỏ)
+## 6. Khoá Data Protection — điểm cần quyết định khi deploy thật
 
-- **Database**: `BACKUP DATABASE ClassManagement TO DISK = '...'` theo lịch.
-- **Thư mục khoá Data Protection** (`DataProtection:ThuMucKhoa`): mất thư mục này thì mọi refresh token
-  Google đã lưu không giải mã được — tất cả giáo viên phải bấm kết nối lại.
+Khoá này mã hoá refresh token Google lưu trong database. Trên Render free (ổ tạm) nó **mất sau mỗi
+lần deploy**. Ba lựa chọn, chọn một trước khi mở cho nhiều người dùng:
 
-## 7. Chạy tự động (systemd, ví dụ Linux)
+1. **Chấp nhận** — giáo viên kết nối lại Google sau mỗi lần cập nhật. Đơn giản nhất, hợp giai đoạn thử.
+2. **Gắn đĩa trả phí** của Render vào `/app/khoa-bao-mat` — khoá nằm yên một chỗ (tốn phí đĩa).
+3. **Chuyển khoá vào database** (thêm gói `Microsoft.AspNetCore.DataProtection.EntityFrameworkCore` +
+   một bảng + migration) — bền mà không cần đĩa. Đây là thay đổi có migration nên phải làm và kiểm thử
+   cẩn thận riêng.
 
-```ini
-[Unit]
-Description=ClassManagement API
-After=network.target
+## 7. Kiểm tra sau khi lên
 
-[Service]
-WorkingDirectory=/opt/classmanagement
-ExecStart=/usr/bin/dotnet /opt/classmanagement/ClassManagement.Api.dll
-Restart=always
-EnvironmentFile=/etc/classmanagement.env
+1. `GET https://<ten-mien>/api/health` → `database.canConnect = true`, `provider = PostgreSQL`.
+2. Mở `https://<ten-mien>/` → trang đăng nhập hiện ra.
+3. Đăng nhập admin → mở **Lịch dạy**, **Điểm danh**, **Học phí**, **Nhật ký**.
+4. Đăng nhập bằng Google → **Cài đặt** thấy "đã kết nối"; **Lịch dạy** bấm *Đồng bộ* rồi mở Google
+   Calendar xem sự kiện.
+5. Chạy `python deploy/kiem-tra-sau-deploy.py https://<ten-mien> https://<ten-mien> --mat-khau <mk admin>`.
 
-[Install]
-WantedBy=multi-user.target
-```
+## 8. Sao lưu (đừng bỏ)
 
-## Ghi chú kỹ thuật đã có sẵn trong mã
-
-- `Program.cs`: phục vụ giao diện từ `wwwroot` + fallback `index.html` (chỉ khi có `index.html`).
-- `Program.cs`: `PersistKeysToFileSystem` khi có `DataProtection:ThuMucKhoa`.
-- Cookie phiên tự gắn `Secure` khi request là HTTPS (`AuthController.TaoTuyChonCookie`).
-- Ở Production app chỉ **cảnh báo** khi không kết nối được database, không tự migration.
+- **Database**: Supabase → Database → Backups (gói free có sao lưu hằng ngày, giữ vài ngày) hoặc tự
+  `pg_dump` theo lịch.
+- **Thư mục khoá Data Protection** (`DataProtection__ThuMucKhoa`): mất là mọi refresh token Google vô
+  hiệu — xem mục 6.

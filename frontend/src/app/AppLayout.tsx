@@ -49,6 +49,8 @@ const tenVaiTro: Record<string, string> = {
   giao_vien: 'Giáo viên',
 }
 
+const NAM_HIEN_TAI = new Date().getFullYear()
+
 /**
  * Chọn menu item đang mở theo URL: khớp tiền tố dài nhất, để /classes/123 vẫn sáng "Lớp học".
  * Trả về chuỗi rỗng khi URL không thuộc menu nào (ví dụ trang 404) để không sáng nhầm mục nào.
@@ -82,24 +84,26 @@ export function AppLayout() {
 
   return (
     <Layout style={{ minHeight: '100vh' }}>
-      {/* Sider nền sáng + viền mảnh: tối giản, và màu mực chỉ dành cho mục đang mở. */}
+      {/* Sider nền sáng + viền mảnh tối giản */}
       <Sider
         theme="light"
-        width={216}
+        width={220}
         collapsible
         collapsed={collapsed}
         trigger={null}
         style={{ borderRight: `1px solid ${token.colorBorderSecondary}`, background: token.colorBgContainer }}
       >
         <div className="app-logo" title={env.appName}>
-          <CalendarOutlined />
+          <span className="app-logo-icon">
+            <CalendarOutlined />
+          </span>
           {!collapsed && <span className="app-logo-text">{env.appName}</span>}
         </div>
 
         <Menu
           theme="light"
           mode="inline"
-          style={{ borderInlineEnd: 0 }}
+          style={{ borderInlineEnd: 0, marginTop: 8 }}
           selectedKeys={[selectedKey]}
           items={itemsHienThi.map((item) => ({
             key: item.key,
@@ -116,7 +120,7 @@ export function AppLayout() {
         <Header
           style={{
             background: token.colorBgContainer,
-            padding: '0 16px',
+            padding: '0 20px',
             display: 'flex',
             alignItems: 'center',
             gap: 12,
@@ -141,7 +145,7 @@ export function AppLayout() {
           />
 
           <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 12 }}>
-            <Tag icon={<LockOutlined />} color={laAdmin ? 'gold' : 'blue'}>
+            <Tag icon={<LockOutlined />} color={laAdmin ? 'purple' : 'blue'}>
               {nguoiDung ? tenVaiTro[nguoiDung.vaiTro] : '—'}
             </Tag>
             <Typography.Text strong>{nguoiDung?.hoTen ?? '—'}</Typography.Text>
@@ -166,29 +170,33 @@ export function AppLayout() {
               }}
             >
               <Space style={{ cursor: 'pointer' }}>
-                <Avatar icon={<UserOutlined />} />
+                <Avatar
+                  style={{ backgroundColor: '#EDF4FD', color: '#4377D9' }}
+                  icon={<UserOutlined />}
+                />
               </Space>
             </Dropdown>
           </div>
         </Header>
 
-        <Content style={{ margin: 16 }}>
+        <Content style={{ margin: 20 }}>
           <div
             style={{
               background: token.colorBgContainer,
               border: `1px solid ${token.colorBorderSecondary}`,
               borderRadius: token.borderRadiusLG,
-              padding: 20,
+              padding: 24,
               minHeight: '100%',
+              boxShadow: '0 1px 3px rgba(0, 0, 0, 0.02)',
             }}
           >
             <Outlet />
           </div>
         </Content>
 
-        <Footer style={{ textAlign: 'center', padding: '8px 16px' }}>
-          <Typography.Text type="secondary" style={{ fontSize: 12 }}>
-            {env.appName} · API qua {env.apiBaseUrl}
+        <Footer style={{ textAlign: 'center', padding: '12px 16px' }}>
+          <Typography.Text type="secondary" style={{ fontSize: 13 }}>
+            {env.appName} © {NAM_HIEN_TAI}
           </Typography.Text>
         </Footer>
       </Layout>

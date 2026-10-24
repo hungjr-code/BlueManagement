@@ -11,7 +11,6 @@ import { router } from './app/router'
 import { SessionProvider } from './app/session'
 import './index.css'
 
-// Toàn bộ ngày tháng trong app hiển thị theo tiếng Việt (dd/MM/yyyy).
 dayjs.locale('vi')
 
 const rootElement = document.getElementById('root')
@@ -25,34 +24,102 @@ createRoot(rootElement).render(
       locale={viVN}
       theme={{
         token: {
-          // Tối giản: giao diện gần như đơn sắc (mực đen + xám rất nhạt + viền mảnh), màu sắc để dành
-          // cho DỮ LIỆU — mỗi học sinh một màu trên ô lịch. Nền tảng xám nhạt, không đổ bóng nặng.
-          colorPrimary: '#111827',
-          colorLink: '#2563eb',
-          colorBgLayout: '#fafafa',
-          colorBorderSecondary: '#efefef',
-          borderRadius: 8,
-          controlHeight: 34,
+          // Phong cách tối giản (Minimalism) với tone màu chủ đạo là Xanh Pastel (Blue Pastel)
+          colorPrimary: '#5B8DEF',
+          colorPrimaryHover: '#719DF2',
+          colorPrimaryActive: '#4377D9',
+          colorPrimaryBg: '#F0F5FD',
+          colorPrimaryBgHover: '#E4EEFA',
+          colorPrimaryBorder: '#C9DEF8',
+          colorPrimaryBorderHover: '#A8CBF4',
+
+          colorLink: '#457FD9',
+          colorLinkHover: '#6B9EF0',
+
+          colorBgLayout: '#F8FAFD',
+          colorBgContainer: '#FFFFFF',
+          colorBorder: '#E6EDF5',
+          colorBorderSecondary: '#EFF4FA',
+
+          colorText: '#1E293B',
+          colorTextSecondary: '#64748B',
+          colorTextTertiary: '#94A3B8',
+
+          borderRadius: 10,
+          borderRadiusLG: 14,
+          borderRadiusSM: 6,
+          controlHeight: 36,
           wireframe: false,
-          boxShadowSecondary: '0 2px 10px rgba(15, 23, 42, 0.06)',
+          boxShadowSecondary: '0 4px 20px -2px rgba(91, 141, 239, 0.08)',
+          boxShadowTertiary: '0 2px 8px rgba(0, 0, 0, 0.04)',
         },
         components: {
-          Layout: { headerBg: '#ffffff', bodyBg: '#fafafa', headerHeight: 56 },
-          Menu: {
-            itemSelectedBg: '#f4f4f5',
-            itemSelectedColor: '#111827',
-            itemHeight: 38,
+          Layout: {
+            headerBg: '#FFFFFF',
+            bodyBg: '#F8FAFD',
+            siderBg: '#FFFFFF',
+            headerHeight: 58,
           },
-          Table: { headerBg: '#fcfcfc', headerSplitColor: 'transparent' },
+          Menu: {
+            itemSelectedBg: '#EDF4FD',
+            itemSelectedColor: '#3669C9',
+            itemHoverBg: '#F4F8FE',
+            itemColor: '#475569',
+            itemHeight: 40,
+            itemBorderRadius: 8,
+            itemMarginInline: 8,
+          },
+          Card: {
+            colorBorderSecondary: '#EBF1F7',
+            headerFontSize: 15,
+            borderRadiusLG: 14,
+            boxShadowTertiary: '0 1px 3px rgba(0, 0, 0, 0.02)',
+            paddingLG: 20,
+          },
+          Table: {
+            headerBg: '#F8FAFC',
+            headerColor: '#64748B',
+            headerSplitColor: 'transparent',
+            rowHoverBg: '#F4F8FD',
+            borderColor: '#EFF4FA',
+            borderRadius: 10,
+          },
+          Button: {
+            borderRadius: 8,
+            controlHeight: 36,
+            primaryShadow: '0 2px 8px rgba(91, 141, 239, 0.22)',
+          },
+          Tag: {
+            borderRadius: 6,
+          },
+          Input: {
+            borderRadius: 8,
+            activeBorderColor: '#5B8DEF',
+            hoverBorderColor: '#8DB3F4',
+          },
+          Select: {
+            borderRadius: 8,
+          },
+          Segmented: {
+            itemSelectedBg: '#FFFFFF',
+            itemSelectedColor: '#2757B8',
+            trackBg: '#EFF4FA',
+            borderRadius: 8,
+          },
+          Alert: {
+            borderRadiusLG: 10,
+          },
+          Modal: {
+            borderRadiusLG: 14,
+          },
+          Drawer: {
+            borderRadiusLG: 14,
+          },
         },
       }}
     >
-      {/* AntApp cấp context cho message/notification/modal dùng qua hook.
-          Không dùng static method (message.success...) vì nó bỏ qua theme và locale ở trên. */}
       <AntApp>
         <QueryClientProvider client={queryClient}>
-          {/* SessionProvider nằm ngoài RouterProvider: nó chỉ nói ai đang đăng nhập,
-              còn việc điều hướng khi hết phiên do RequireAuth lo. */}
           <SessionProvider>
             <RouterProvider router={router} />
           </SessionProvider>

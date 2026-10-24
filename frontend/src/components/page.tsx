@@ -8,24 +8,34 @@ interface PageHeaderProps {
 }
 
 /**
- * Tiêu đề trang dùng chung để mọi màn hình có cùng khoảng cách và cỡ chữ.
- *
- * Trước đây file này còn `ScaffoldPage` — khung màn hình kèm bảng "Trường dữ liệu" và danh sách
- * "Việc sẽ làm" từ thời còn viết đặc tả trước khi có API. Mọi màn hình đã nối API thật nên bảng đó
- * chỉ làm rối mắt người dùng; đã bỏ hẳn.
+ * Tiêu đề trang dùng chung để mọi màn hình có khoảng cách và phân cấp typography tối giản, đồng bộ.
  */
 export function PageHeader({ title, description, extra }: PageHeaderProps) {
   return (
-    <Flex align="flex-start" justify="space-between" gap={16} wrap style={{ marginBottom: 20 }}>
+    <Flex align="flex-start" justify="space-between" gap={16} wrap style={{ marginBottom: 24 }}>
       <div>
-        <Typography.Title level={4} style={{ margin: 0 }}>
+        <Typography.Title
+          level={4}
+          style={{
+            margin: 0,
+            fontWeight: 600,
+            fontSize: 20,
+            letterSpacing: '-0.015em',
+            color: '#0F172A',
+          }}
+        >
           {title}
         </Typography.Title>
         {description ? (
-          <Typography.Text type="secondary">{description}</Typography.Text>
+          <Typography.Text
+            type="secondary"
+            style={{ fontSize: 13, color: '#64748B', display: 'inline-block', marginTop: 2 }}
+          >
+            {description}
+          </Typography.Text>
         ) : null}
       </div>
-      {extra}
+      {extra ? <div style={{ display: 'flex', alignItems: 'center' }}>{extra}</div> : null}
     </Flex>
   )
 }

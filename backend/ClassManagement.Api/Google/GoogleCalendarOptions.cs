@@ -43,6 +43,15 @@ public class GoogleCalendarOptions
     public bool DaCauHinh => !LaGiaTriMau(ClientId) && !LaGiaTriMau(ClientSecret);
 
     /// <summary>
+    /// Ba địa chỉ (gọi lại khi kết nối lịch, gọi lại khi đăng nhập, địa chỉ giao diện) còn nguyên chỗ
+    /// trống của tài liệu. Đây là bẫy hay gặp nhất khi lên máy chủ: đã điền ClientId/ClientSecret
+    /// nhưng quên đổi ba địa chỉ này, nên Google chuyển hướng về một tên miền không tồn tại và người
+    /// dùng chỉ biết là "đăng nhập bằng Google không được", không biết vì sao.
+    /// </summary>
+    public bool DiaChiConChoTrong =>
+        LaGiaTriMau(RedirectUri) || LaGiaTriMau(RedirectUriDangNhap) || LaGiaTriMau(FrontendUrl);
+
+    /// <summary>
     /// Chỗ trống trong tài liệu bị chép nguyên văn vào user-secrets là chuyện thường gặp: tài liệu ghi
     /// <c>dotnet user-secrets set "GoogleCalendar:ClientId" "&lt;client id&gt;..."</c> mà dấu ngoặc nhọn
     /// lại dễ bị dán luôn. Nhận ra chúng để báo "chưa cấu hình" cho đúng.
@@ -57,6 +66,13 @@ public class GoogleCalendarOptions
         var giaTriDaCat = giaTri.Trim();
 
         if (giaTriDaCat.Contains('<') || giaTriDaCat.Contains('>'))
+        {
+            return true;
+        }
+
+        // Chỗ trống trong appsettings.Production.json viết là "https://THAY-BANG-TEN-MIEN/...": không có
+        // dấu ngoặc nhọn nào, nên phải nhận riêng, không thì nó đi lọt qua và bị coi là địa chỉ thật.
+        if (giaTriDaCat.Contains("THAY-BANG", StringComparison.OrdinalIgnoreCase))
         {
             return true;
         }

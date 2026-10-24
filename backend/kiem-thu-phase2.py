@@ -127,7 +127,10 @@ def main() -> int:
     print("== 2. Nhập học sinh kèm lịch học hằng tuần ==")
     ma, than = goi("/api/students", method="POST", token=token_gv, body={
         "hoTen": "Học sinh Phase 2", "cachTinhHocPhi": "theo_buoi", "donGiaTheoBuoi": 250000,
-        "soBuoiMoiTuan": 2, "ngayDenHanDongTien": 5, "ngayBatDau": hom_nay.isoformat(),
+        # Ngày bắt đầu là THỨ 2 ĐẦU TUẦN, không phải hôm nay: lịch khai thứ 3 và thứ 6, nên nếu bắt
+        # đầu từ hôm nay thì chạy bài này vào thứ 7/CN sẽ không có buổi nào trong tuần (đúng nghiệp
+        # vụ — không sinh buổi trước ngày nhập học), và các bước kiểm "sinh buổi từ lịch tuần" đỏ oan.
+        "soBuoiMoiTuan": 2, "ngayDenHanDongTien": 5, "ngayBatDau": dau_tuan.isoformat(),
         "phuHuynh": "Phụ huynh Phase 2", "soDienThoaiPhuHuynh": "0900000009",
         "lichHoc": [{"thu": "thu_3", "gioBatDau": "18:00:00", "gioKetThuc": "19:30:00"},
                     {"thu": "thu_6", "gioBatDau": "18:00:00", "gioKetThuc": "19:30:00"}]})

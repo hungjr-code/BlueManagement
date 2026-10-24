@@ -1,10 +1,8 @@
 import { useMemo, useState } from 'react'
 import {
-  Alert,
   App,
   Button,
   Card,
-  Descriptions,
   Flex,
   Input,
   Select,
@@ -23,7 +21,7 @@ import type { BoLocHocSinh, HocSinh, TrangThaiHocSinh } from '../../api/types'
 import { usePhien } from '../../app/session'
 import { formatVnd } from '../../lib/money'
 import { FormHocSinh } from './FormHocSinh'
-import { LoiApiAlert } from './LoiApiAlert'
+import { LoiApiAlert } from '../../components/LoiApiAlert'
 import {
   SO_TUAN_MOI_THANG,
   TRANG_THAI_HOC_SINH,
@@ -40,11 +38,7 @@ import {
 const KICH_THUOC_MAC_DINH = 20
 
 /**
- * Danh sách học sinh dùng API thật của backend.
- *
- * Phân trang làm ở phía server (`trang`/`kichThuoc`, tổng số ở `tongSo`) vì số học sinh của cả trung
- * tâm có thể lớn. Giáo viên chỉ nhận được học sinh của mình — việc chặn quyền nằm ở backend, ở đây
- * chỉ ẩn bớt nút cho gọn mắt.
+ * Danh sách học sinh.
  */
 export function StudentsPage() {
   const { message, modal } = App.useApp()
@@ -52,7 +46,6 @@ export function StudentsPage() {
   const laAdmin = nguoiDung?.vaiTro === 'admin'
 
   const [oNhapTuKhoa, datONhapTuKhoa] = useState('')
-  // Từ khoá đã chốt để gọi API: chỉ đổi khi bấm Enter hoặc xoá ô tìm, không gọi API theo từng ký tự.
   const [tuKhoa, datTuKhoa] = useState('')
   const [trangThaiLoc, datTrangThaiLoc] = useState<TrangThaiHocSinh | undefined>(undefined)
   const [giaoVienLoc, datGiaoVienLoc] = useState<string | undefined>(undefined)
@@ -76,7 +69,6 @@ export function StudentsPage() {
 
   const danhSach = useDanhSachHocSinh(boLoc)
   const choNghi = useChoHocSinhNghi()
-  // Hook không gọi có điều kiện; với giáo viên backend chỉ trả về chính họ nên Select không dùng tới.
   const danhSachGiaoVien = useDanhSachGiaoVien({ kichThuoc: 200 })
   const giaoVien = danhSachGiaoVien.data?.duLieu ?? []
 
@@ -105,35 +97,27 @@ export function StudentsPage() {
     datTrang(1)
   }
 
-  /**
-   * Cho nghỉ = đổi trạng thái ở backend, KHÔNG xoá hồ sơ: điểm danh và học phí đã ghi vẫn tra cứu
-   * được về sau. Nói rõ điều đó trước khi người dùng bấm.
-   */
   const hoiChoNghi = (hocSinh: HocSinh) => {
     modal.confirm({
       title: `Cho ${hocSinh.hoTen} nghỉ học?`,
       content: (
-        <Flex vertical gap={8}>
-          <Typography.Text>Hồ sơ học sinh KHÔNG bị xoá. Hệ thống chỉ:</Typography.Text>
-          <ul style={{ margin: 0, paddingLeft: 20 }}>
-            <li>
-              Chuyển trạng thái sang <Tag>Đã nghỉ</Tag>
-            </li>
-            <li>Bỏ các buổi chưa dạy từ hôm nay trở đi, để không sinh buổi mới nữa</li>
-          </ul>
-          <Typography.Text type="secondary">
-            Điểm danh và học phí đã ghi giữ nguyên, sau này cần tra cứu vẫn xem được.
+        <Flex vertical gap={6}>
+          <Typography.Text>
+            Học sinh sẽ được chuyển sang trạng thái <strong>Đã nghỉ</strong> và dừng lịch học kể từ hôm nay.
+          </Typography.Text>
+          <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+            Dữ liệu điểm danh và học phí trước đó vẫn được lưu trữ đầy đủ.
           </Typography.Text>
         </Flex>
       ),
-      okText: 'Cho nghỉ',
+      okText: 'Xác nhận cho nghỉ',
       okButtonProps: { danger: true },
-      cancelText: 'Để sau',
+      cancelText: 'Huỷ',
       onOk: async () => {
         datLoiThaoTac(null)
         try {
           await choNghi.mutateAsync(hocSinh.id)
-          message.success(`Đã cho ${hocSinh.hoTen} nghỉ học`)
+          message.success(`Đã cập nhật trạng thái nghỉ cho ${hocSinh.hoTen}`)
         } catch (error) {
           datLoiThaoTac(error)
         }
@@ -160,18 +144,18 @@ export function StudentsPage() {
     {
       title: 'Lớp',
       dataIndex: 'lop',
-      width: 130,
+      width: 120,
       render: (lop: string | null) => lop ?? <Typography.Text type="secondary">—</Typography.Text>,
     },
     {
-      title: 'Giáo viên phụ trách',
+      title: 'Giáo viên',
       dataIndex: 'tenGiaoVien',
       width: 160,
     },
     {
       title: 'Cách tính học phí',
       key: 'cachTinhHocPhi',
-      width: 190,
+      width: 180,
       render: (_giaTri, hocSinh) => (
         <Flex vertical gap={4} align="flex-start">
           <Tag color={mauCachTinhHocPhi(hocSinh.cachTinhHocPhi)}>
@@ -182,9 +166,9 @@ export function StudentsPage() {
       ),
     },
     {
-      title: 'Số buổi/tuần',
+      title: 'Buổi/tuần',
       dataIndex: 'soBuoiMoiTuan',
-      width: 110,
+      width: 100,
       render: (soBuoi: number) => `${soBuoi} buổi`,
     },
     {
@@ -196,13 +180,13 @@ export function StudentsPage() {
     {
       title: 'Hạn đóng',
       dataIndex: 'ngayDenHanDongTien',
-      width: 150,
+      width: 140,
       render: (ngay: number) => moTaHanDong(ngay),
     },
     {
-      title: 'Học phí dự kiến/tháng',
+      title: 'Học phí dự kiến',
       key: 'hocPhiDuKien',
-      width: 200,
+      width: 170,
       render: (_giaTri, hocSinh) => {
         const duKien = hocPhiDuKienThang(hocSinh)
         if (duKien === null) {
@@ -211,10 +195,10 @@ export function StudentsPage() {
         return (
           <Flex vertical>
             <Typography.Text strong>{formatVnd(duKien)}</Typography.Text>
-            <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+            <Typography.Text type="secondary" style={{ fontSize: 11 }}>
               {hocSinh.cachTinhHocPhi === 'theo_buoi'
-                ? `${hocSinh.soBuoiMoiTuan} buổi × ${SO_TUAN_MOI_THANG} tuần · dự kiến`
-                : 'mức tháng đã khai · dự kiến'}
+                ? `${hocSinh.soBuoiMoiTuan} buổi × ${SO_TUAN_MOI_THANG} tuần`
+                : 'Mức tháng'}
             </Typography.Text>
           </Flex>
         )
@@ -231,7 +215,7 @@ export function StudentsPage() {
     {
       title: 'Thao tác',
       key: 'thaoTac',
-      width: 180,
+      width: 160,
       fixed: 'right',
       render: (_giaTri, hocSinh) => (
         <Space size="small">
@@ -264,7 +248,7 @@ export function StudentsPage() {
     <>
       <PageHeader
         title="Học sinh"
-        description="Nhập tên học sinh, giáo viên phụ trách, cách tính học phí và số buổi học mỗi tuần; kèm danh sách, bộ lọc và cho nghỉ."
+        description="Quản lý danh sách học sinh và lịch học."
       />
       <Flex vertical gap={16}>
         <Card
@@ -288,7 +272,7 @@ export function StudentsPage() {
                 value={oNhapTuKhoa}
                 placeholder="Tìm theo tên học sinh"
                 allowClear
-                style={{ width: 260 }}
+                style={{ width: 240 }}
                 onChange={(suKien) => {
                   datONhapTuKhoa(suKien.target.value)
                 }}
@@ -300,8 +284,8 @@ export function StudentsPage() {
               />
               <Select<TrangThaiHocSinh>
                 allowClear
-                placeholder="Trạng thái: tất cả"
-                style={{ width: 180 }}
+                placeholder="Tất cả trạng thái"
+                style={{ width: 170 }}
                 value={trangThaiLoc}
                 options={TRANG_THAI_HOC_SINH.map((trangThai) => ({
                   value: trangThai.value,
@@ -317,8 +301,8 @@ export function StudentsPage() {
                   allowClear
                   showSearch
                   optionFilterProp="label"
-                  placeholder="Giáo viên: tất cả"
-                  style={{ width: 220 }}
+                  placeholder="Tất cả giáo viên"
+                  style={{ width: 200 }}
                   value={giaoVienLoc}
                   loading={danhSachGiaoVien.isPending}
                   notFoundContent="Chưa đọc được danh sách giáo viên"
@@ -332,19 +316,12 @@ export function StudentsPage() {
                   }}
                 />
               ) : null}
-              <Button disabled={!coBoLoc} onClick={xoaBoLoc}>
-                Xoá bộ lọc
-              </Button>
+              {coBoLoc ? (
+                <Button onClick={xoaBoLoc}>
+                  Xoá bộ lọc
+                </Button>
+              ) : null}
             </Space>
-
-            {laAdmin && danhSachGiaoVien.isError ? (
-              <Alert
-                type="warning"
-                showIcon
-                message="Không đọc được danh sách giáo viên"
-                description="Bộ lọc theo giáo viên tạm thời để trống; danh sách học sinh vẫn xem bình thường."
-              />
-            ) : null}
 
             {loiThaoTac ? (
               <LoiApiAlert error={loiThaoTac} tieuDe="Không thực hiện được thao tác" />
@@ -370,12 +347,12 @@ export function StudentsPage() {
                 scroll={{ x: 'max-content' }}
                 locale={{
                   emptyText: (
-                    <Flex vertical gap={4} style={{ padding: 24 }}>
-                      <Typography.Text>Chưa có học sinh nào khớp bộ lọc</Typography.Text>
+                    <Flex vertical gap={4} style={{ padding: 24, textAlign: 'center' }}>
+                      <Typography.Text>Chưa có học sinh nào</Typography.Text>
                       <Typography.Text type="secondary" style={{ fontSize: 12 }}>
                         {coBoLoc
                           ? 'Thử xoá bộ lọc để xem toàn bộ danh sách.'
-                          : 'Bấm "Thêm học sinh" để nhập em đầu tiên.'}
+                          : 'Bấm "Thêm học sinh" để tạo hồ sơ đầu tiên.'}
                       </Typography.Text>
                     </Flex>
                   ),
@@ -395,31 +372,6 @@ export function StudentsPage() {
               />
             )}
           </Flex>
-        </Card>
-
-        <Card size="small" title="Học phí dự kiến tính thế nào">
-          <Descriptions size="small" column={1} bordered>
-            <Descriptions.Item label="Theo buổi">
-              <Typography.Text code>
-                số buổi mỗi tuần × {SO_TUAN_MOI_THANG} tuần × đơn giá theo buổi
-              </Typography.Text>
-            </Descriptions.Item>
-            <Descriptions.Item label="Theo tháng">
-              <Typography.Text code>học phí theo tháng, không phụ thuộc số buổi</Typography.Text>
-            </Descriptions.Item>
-            <Descriptions.Item label="Vì sao ghi “dự kiến”">
-              Cột Học phí dự kiến/tháng là con số ước lượng để nhìn nhanh, chưa trừ buổi nghỉ — buổi nghỉ
-              chỉ trừ được khi đã điểm danh. Công nợ thật và phiếu thu nằm ở trang Học phí.
-            </Descriptions.Item>
-            <Descriptions.Item label="Khi nghỉ">
-              Buổi nghỉ không tính tiền nếu là nghỉ theo cách tính "theo buổi". Với "theo tháng" thì giữ
-              nguyên mức tháng, chỉ ghi nhận để biết số buổi thực dạy.
-            </Descriptions.Item>
-            <Descriptions.Item label="Đến hạn đóng tiền">
-              Ngày đến hạn dùng để nhắc: học sinh vào danh sách "sắp đến hạn" trước hạn 3 ngày và bị tô
-              đỏ khi quá hạn. <Tag color="blue">nuôi trang Học phí</Tag>
-            </Descriptions.Item>
-          </Descriptions>
         </Card>
       </Flex>
 

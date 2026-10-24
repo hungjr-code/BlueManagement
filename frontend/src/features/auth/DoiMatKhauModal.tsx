@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Alert, App, Button, Flex, Form, Input, Modal, Typography } from 'antd'
+import { Alert, App, Button, Flex, Form, Input, Modal } from 'antd'
 import { doiMatKhau } from '../../api/auth'
 import { ApiError } from '../../api/http'
 
@@ -95,7 +95,7 @@ export function DoiMatKhauModal({ open, onClose }: { open: boolean; onClose: () 
             <Input.Password autoComplete="new-password" />
           </Form.Item>
 
-          <Flex justify="end" gap={8}>
+          <Flex justify="end" gap={8} style={{ marginTop: 8 }}>
             <Button
               onClick={() => {
                 form.resetFields()
@@ -110,10 +110,6 @@ export function DoiMatKhauModal({ open, onClose }: { open: boolean; onClose: () 
             </Button>
           </Flex>
         </Form>
-
-        <Typography.Text type="secondary" style={{ fontSize: 12 }}>
-          Đổi mật khẩu sẽ đăng xuất các thiết bị khác đang dùng tài khoản này.
-        </Typography.Text>
       </Flex>
     </Modal>
   )

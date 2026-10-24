@@ -9,27 +9,16 @@ import { formatVnd } from '../lib/money'
 interface PaymentQrModalProps {
   open: boolean
   onClose: () => void
-  /** Tên học sinh, cũng là phần đầu của nội dung chuyển khoản. */
   tenHocSinh: string
   soTien: number
-  /** Kỳ học phí, ví dụ "Học phí tháng 09/2026". */
   kyHocPhi: string
-  /**
-   * Tài khoản nhận tiền của giáo viên dạy học sinh này. Mỗi giáo viên dùng tài khoản của mình,
-   * nên hộp thoại nhận tài khoản từ bên ngoài thay vì tự đi tìm một tài khoản chung.
-   */
   taiKhoan: TaiKhoanNhanTien | undefined
-  /** Mẫu nội dung chuyển khoản của trung tâm (ở Cài đặt). */
   mauNoiDungChuyenKhoan?: string | null
-  /** Tên giáo viên nhận tiền, hiện cho rõ tiền chuyển vào tài khoản của ai. */
   tenGiaoVienNhanTien?: string
 }
 
 /**
- * Hộp thoại thu tiền: hiện mã QR kèm đúng số tiền cần thu.
- *
- * Mã QR lấy từ vietqr.io dựa trên tài khoản giáo viên đã khai ở Cài đặt, để ngân hàng tự
- * điền số tài khoản, số tiền và nội dung — giảm sai sót khi chuyển khoản tay.
+ * Hộp thoại hiển thị mã QR thu tiền.
  */
 export function PaymentQrModal({
   open,
@@ -54,7 +43,7 @@ export function PaymentQrModal({
       await navigator.clipboard.writeText(noiDungChuyenKhoan)
       message.success('Đã sao chép nội dung chuyển khoản')
     } catch {
-      message.error('Trình duyệt không cho sao chép tự động, bạn chọn và copy thủ công nhé')
+      message.error('Không thể sao chép tự động')
     }
   }
 
@@ -64,20 +53,14 @@ export function PaymentQrModal({
       onCancel={onClose}
       title={`Thu tiền — ${tenHocSinh}`}
       footer={null}
-      width={460}
+      width={440}
     >
       {!daCauHinh ? (
         <Alert
           type="warning"
           showIcon
-          message="Chưa có tài khoản nhận tiền"
-          description={
-            <>
-              Mã QR cần biết tiền vào tài khoản nào. Mỗi giáo viên tự khai tài khoản của mình ở{' '}
-              <Typography.Text code>Cài đặt</Typography.Text> — khai giúp người khác không được, kể
-              cả admin.
-            </>
-          }
+          message="Chưa thiết lập tài khoản nhận tiền"
+          description="Vui lòng thiết lập tài khoản nhận tiền trong phần Cài đặt trước khi tạo mã QR."
           action={
             <Button
               size="small"
@@ -93,13 +76,13 @@ export function PaymentQrModal({
       ) : (
         <Flex vertical gap={16}>
           <div style={{ textAlign: 'center' }}>
-            <Typography.Text type="secondary">Số tiền cần thu</Typography.Text>
-            <Typography.Title level={3} style={{ margin: 0 }}>
+            <Typography.Text type="secondary" style={{ fontSize: 13 }}>Số tiền cần thu</Typography.Text>
+            <Typography.Title level={3} style={{ margin: 0, color: '#5B8DEF' }}>
               {formatVnd(soTien)}
             </Typography.Title>
             {tenGiaoVienNhanTien ? (
               <Typography.Text type="secondary" style={{ fontSize: 12 }}>
-                Chuyển cho giáo viên {tenGiaoVienNhanTien}
+                Người nhận: {tenGiaoVienNhanTien}
               </Typography.Text>
             ) : null}
           </div>
@@ -109,7 +92,6 @@ export function PaymentQrModal({
               type="error"
               showIcon
               message="Không tải được ảnh mã QR"
-              description="Mã QR lấy từ vietqr.io nên cần kết nối mạng. Kiểm tra mạng rồi thử lại."
               action={
                 <Button
                   size="small"
@@ -127,16 +109,16 @@ export function PaymentQrModal({
               <img
                 src={qrUrl ?? ''}
                 alt={`Mã QR thu ${formatVnd(soTien)} của ${tenHocSinh}`}
-                width={260}
-                height={260}
-                style={{ border: '1px solid #f0f0f0', borderRadius: 8 }}
+                width={240}
+                height={240}
+                style={{ border: '1px solid #E6EDF5', borderRadius: 12, padding: 8 }}
                 onError={() => {
                   setAnhLoi(true)
                 }}
               />
-              <div>
+              <div style={{ marginTop: 6 }}>
                 <Typography.Text type="secondary" style={{ fontSize: 12 }}>
-                  Quét bằng app ngân hàng — số tiền và nội dung đã điền sẵn
+                  Quét mã qua ứng dụng ngân hàng
                 </Typography.Text>
               </div>
             </div>
@@ -152,7 +134,7 @@ export function PaymentQrModal({
             <Descriptions.Item label="Chủ tài khoản">
               {taiKhoan?.chuTaiKhoan || '—'}
             </Descriptions.Item>
-            <Descriptions.Item label="Nội dung chuyển khoản">
+            <Descriptions.Item label="Nội dung">
               <Space>
                 <Typography.Text>{noiDungChuyenKhoan}</Typography.Text>
                 <Button
@@ -167,11 +149,6 @@ export function PaymentQrModal({
               </Space>
             </Descriptions.Item>
           </Descriptions>
-
-          <Typography.Text type="secondary" style={{ fontSize: 12 }}>
-            Mã QR chỉ để khách quét. Ghi phiếu thu làm ở nút “Thu tiền” (trang Học phí) để lần thu có
-            số tiền, ngày và hình thức thanh toán.
-          </Typography.Text>
         </Flex>
       )}
     </Modal>

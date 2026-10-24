@@ -1,19 +1,21 @@
 import { Alert, Button, List, Typography } from 'antd'
 import { ReloadOutlined } from '@ant-design/icons'
-import { loiTheoField, moTaLoi } from './hienThi'
+import { loiTheoField, moTaLoi } from '../lib/loiApi'
 
 interface LoiApiAlertProps {
-  /** Lỗi bắt được — thường là ApiError đã chuẩn hoá ở src/api/http.ts. */
+  /** Lỗi bắt được — thường là ApiError đã được chuẩn hoá ở src/api/http.ts. */
   error: unknown
-  /** Tiêu đề nói rõ việc gì không làm được, để người dùng biết hỏng ở bước nào. */
+  /** Tiêu đề nói rõ việc gì không làm được, để người dùng biết lỗi ở bước nào. */
   tieuDe: string
   /** Có truyền thì hiện nút "Thử lại". */
   onThuLai?: () => void
 }
 
 /**
- * Hiện lỗi API ở một chỗ: lỗi validate của backend liệt kê theo từng field trước, còn lại hiện message.
+ * Hiện lỗi API ở một chỗ: lỗi validate của backend thì liệt kê theo từng field, còn lại hiện message.
  * Không bóc lỗi axios ở đây vì tầng http đã quy hết về ApiError.
+ *
+ * Dùng CHUNG cho mọi màn hình — trước đây Học sinh và Học phí mỗi nơi giữ một bản sao.
  */
 export function LoiApiAlert({ error, tieuDe, onThuLai }: LoiApiAlertProps) {
   const theoField = loiTheoField(error)

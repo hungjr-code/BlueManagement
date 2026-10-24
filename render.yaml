@@ -1,0 +1,64 @@
+# Render Blueprint — khai báo hạ tầng để deploy một lần là xong:
+#   Render Dashboard > New > Blueprint > chọn repo này.
+#
+# Kiến trúc: MỘT dịch vụ web (Docker) phục vụ cả giao diện React đã build lẫn API ASP.NET Core
+# (xem deploy/render/Dockerfile). Database là Postgres trên Supabase (không do Render quản).
+#
+# Các biến "sync: false" là giá trị BÍ MẬT / theo môi trường: Render sẽ hỏi điền khi tạo Blueprint,
+# không lưu trong repo.
+services:
+  - type: web
+    name: bluemanagement
+    runtime: docker
+    plan: free
+    region: singapore
+    dockerfilePath: ./deploy/render/Dockerfile
+    dockerContext: .
+    healthCheckPath: /api/health
+    autoDeploy: true
+    envVars:
+      - key: ASPNETCORE_ENVIRONMENT
+        value: Production
+      # Sau reverse proxy của Render: bắt buộc để cookie phiên được gắn cờ Secure.
+      - key: ASPNETCORE_FORWARDEDHEADERS_ENABLED
+        value: "true"
+      # Gói free 512MB: Workstation GC cho khỏi bị OOM-kill.
+      - key: DOTNET_gcServer
+        value: "0"
+      # Chuỗi kết nối Supabase (Shared/Session pooler), dạng Npgsql:
+      # Host=aws-0-ap-northeast-2.pooler.supabase.com;Port=5432;Database=postgres;Username=postgres.<ref>;Password=...;SSL Mode=Require;Trust Server Certificate=true
+      - key: ConnectionStrings__MacDinh
+        sync: false
+      # Khoá ký JWT — Render tự sinh chuỗi ngẫu nhiên, không cần tự nghĩ.
+      - key: Jwt__Key
+        generateValue: true
+      # Mật khẩu admin đầu tiên (chỉ dùng lần chạy đầu để tạo tài khoản admin).
+      - key: Seed__Admin__MatKhau
+        sync: false
+      # Thư mục khoá Data Protection. LƯU Ý: ổ đĩa của gói free là TẠM — mỗi lần deploy lại là mất
+      # khoá, giáo viên phải kết nối lại Google. Muốn bền thì gắn đĩa trả phí hoặc chuyển khoá vào
+      # database (xem deploy/README.md, mục "Khoá Data Protection").
+      - key: DataProtection__ThuMucKhoa
+        value: /app/khoa-bao-mat
+      # Google OAuth — điền sau khi đã có tên miền (xem deploy/README.md).
+      - key: GoogleCalendar__ClientId
+        sync: false
+      - key: GoogleCalendar__ClientSecret
+        sync: false
+      - key: GoogleCalendar__RedirectUri
+        sync: false
+      - key: GoogleCalendar__RedirectUriDangNhap
+        sync: false
+      - key: GoogleCalendar__FrontendUrl
+        sync: false
+      # Email SMTP (tuỳ chọn — thiếu thì quên mật khẩu chỉ ghi log, không gửi thư).
+      - key: Email__SmtpHost
+        sync: false
+      - key: Email__SmtpPort
+        sync: false
+      - key: Email__SmtpTaiKhoan
+        sync: false
+      - key: Email__SmtpMatKhau
+        sync: false
+      - key: Email__TuDiaChi
+        sync: false

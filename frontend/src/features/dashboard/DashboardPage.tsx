@@ -27,25 +27,18 @@ import { LichDayTuan } from './LichDayTuan'
 import { BangTongHop } from './BangTongHop'
 import { taoCotBuoiHoc } from './cotBuoiHoc'
 
-const CHU_THICH_HOC_PHI = 'Con số dự kiến để nhìn nhanh; công nợ thật tính từ điểm danh ở trang Học phí.'
-
 function moTaLoi(error: unknown): string {
   return error instanceof Error ? error.message : 'Lỗi không xác định'
 }
 
 /**
  * Tổng quan: hôm nay dạy ai, tuần này dạy những ai.
- *
- * Số liệu đọc thẳng từ `GET /api/dashboard/hom-nay` và `/tuan-nay` — không có số nào gõ tay ở đây.
- * Admin lọc được theo giáo viên; giáo viên không thấy bộ lọc vì backend đã giới hạn dữ liệu trả về
- * đúng bằng lịch dạy của chính họ.
  */
 export function DashboardPage() {
   const dieuHuong = useNavigate()
   const { nguoiDung } = usePhien()
   const laAdmin = nguoiDung?.vaiTro === 'admin'
 
-  // Giữ cả object giáo viên đang lọc để hiện được tên; API chỉ cần id.
   const [giaoVienLoc, setGiaoVienLoc] = useState<GiaoVien | undefined>(undefined)
   const giaoVienId = giaoVienLoc?.id
 
@@ -72,7 +65,7 @@ export function DashboardPage() {
     <>
       <PageHeader
         title="Tổng quan"
-        description="Hôm nay dạy ai, tuần này dạy những ai. Số liệu đọc trực tiếp từ API; học phí là con số dự kiến."
+        description="Tổng quan hoạt động và lịch dạy trong tuần."
         extra={
           <Space wrap>
             {laAdmin ? <BoLocGiaoVien giaTri={giaoVienLoc} onChange={setGiaoVienLoc} /> : null}
@@ -212,7 +205,7 @@ export function DashboardPage() {
                   suffix="buổi"
                 />
                 <Typography.Text type="secondary" style={{ fontSize: 12 }}>
-                  Chưa điểm danh khác với nghỉ: buổi bỏ trống không sinh ra tiền.
+                  {tuanNay.data?.soChuaDiemDanh ? 'Cần cập nhật điểm danh' : 'Đã điểm danh đầy đủ'}
                 </Typography.Text>
               </Card>
             </Col>
@@ -223,7 +216,7 @@ export function DashboardPage() {
                   value={tuanNay.data ? formatVnd(tuanNay.data.hocPhiDuKienThangNay) : '—'}
                 />
                 <Typography.Text type="secondary" style={{ fontSize: 12 }}>
-                  {CHU_THICH_HOC_PHI}
+                  Dự kiến theo lịch học
                 </Typography.Text>
               </Card>
             </Col>
@@ -237,17 +230,15 @@ export function DashboardPage() {
             <Row gutter={[16, 16]}>
               <Col xs={24} xl={laAdmin ? 12 : 24}>
                 <BangTongHop
-                  tieuDe="Tổng hợp cuối tuần theo học sinh"
+                  tieuDe="Tổng hợp theo học sinh"
                   duLieu={tuanNay.data.tongHopTheoHocSinh}
-                  ghiChu="Đếm từ điểm danh của từng buổi trong tuần này. Số buổi đi học là căn cứ tính tiền."
                 />
               </Col>
               {laAdmin ? (
                 <Col xs={24} xl={12}>
                   <BangTongHop
-                    tieuDe="Tổng hợp cuối tuần theo giáo viên"
+                    tieuDe="Tổng hợp theo giáo viên"
                     duLieu={tuanNay.data.tongHopTheoGiaoVien}
-                    ghiChu="Chỉ admin thấy bảng này: dùng để biết giáo viên nào còn buổi chưa điểm danh."
                   />
                 </Col>
               ) : null}

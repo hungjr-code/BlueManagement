@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Alert, App, Button, DatePicker, Flex, Form, Input, Modal, Select, Typography } from 'antd'
+import { Alert, App, Button, DatePicker, Flex, Form, Input, Modal, Select } from 'antd'
 import dayjs from 'dayjs'
 import type { Dayjs } from 'dayjs'
 import { useTaoGiaoVien } from '../../api/teachers'
@@ -18,12 +18,7 @@ interface GiaTriThemGiaoVien {
 }
 
 /**
- * Admin tạo tài khoản giáo viên mới.
- *
- * Admin đặt mật khẩu đầu tiên hộ giáo viên (giáo viên nên đổi lại sau lần đăng nhập đầu; quên thì dùng
- * luồng "Quên mật khẩu" ở trang đăng nhập) —
- * form nói thẳng điều đó thay vì để người dùng tưởng hệ thống tự gửi thư.
- * Vai trò mặc định luôn là giáo viên, không bao giờ mặc định thành admin.
+ * Thêm tài khoản giáo viên mới.
  */
 export function ThemGiaoVienModal({ open, onClose }: { open: boolean; onClose: () => void }) {
   const [form] = Form.useForm<GiaTriThemGiaoVien>()
@@ -49,9 +44,7 @@ export function ThemGiaoVienModal({ open, onClose }: { open: boolean; onClose: (
         ngayThamGia: giaTri.ngayThamGia.format('YYYY-MM-DD'),
         ghiChu: giaTri.ghiChu?.trim() || null,
       })
-      message.success(
-        `Đã tạo tài khoản cho ${giaoVienMoi.hoTen}. Hãy gửi mật khẩu đầu tiên cho họ và nhắc đổi lại sau lần đăng nhập đầu.`,
-      )
+      message.success(`Đã tạo tài khoản cho ${giaoVienMoi.hoTen}`)
       dong()
     } catch (error) {
       const loiApi = error instanceof ApiError ? error : null
@@ -65,15 +58,8 @@ export function ThemGiaoVienModal({ open, onClose }: { open: boolean; onClose: (
   }
 
   return (
-    <Modal open={open} title="Thêm giáo viên" footer={null} width={560} onCancel={dong}>
+    <Modal open={open} title="Thêm giáo viên mới" footer={null} width={520} onCancel={dong}>
       <Flex vertical gap={12}>
-        <Alert
-          type="info"
-          showIcon
-          message="Chưa có kênh gửi email mời đặt mật khẩu"
-          description="Vì vậy admin đặt mật khẩu đầu tiên hộ giáo viên. Hãy gửi mật khẩu này cho họ qua kênh khác (không gửi qua email này) và nhắc họ đổi lại ngay sau lần đăng nhập đầu."
-        />
-
         {loi ? <Alert type="error" showIcon message={loi} /> : null}
 
         <Form<GiaTriThemGiaoVien>
@@ -93,7 +79,7 @@ export function ThemGiaoVienModal({ open, onClose }: { open: boolean; onClose: (
               { min: 2, message: 'Tên giáo viên phải dài ít nhất 2 ký tự' },
             ]}
           >
-            <Input placeholder="Ví dụ Nguyễn Văn A" allowClear />
+            <Input placeholder="Ví dụ: Nguyễn Văn A" allowClear />
           </Form.Item>
 
           <Form.Item
@@ -103,26 +89,24 @@ export function ThemGiaoVienModal({ open, onClose }: { open: boolean; onClose: (
               { required: true, message: 'Nhập email đăng nhập' },
               { type: 'email', message: 'Email không hợp lệ' },
             ]}
-            extra="Email là tên đăng nhập nên không cho trùng giữa các giáo viên. Backend không có API đổi email — muốn đổi phải tạo tài khoản mới."
           >
-            <Input placeholder="giao.vien@example.com" autoComplete="off" allowClear />
+            <Input placeholder="giao.vien@trungtam.vn" autoComplete="off" allowClear />
           </Form.Item>
 
           <Form.Item label="Số điện thoại" name="soDienThoai" rules={[{ max: 30, message: 'Tối đa 30 ký tự' }]}>
-            <Input placeholder="0900000000" allowClear />
+            <Input placeholder="090…" allowClear />
           </Form.Item>
 
           <Form.Item
             label="Vai trò"
             name="vaiTro"
             rules={[{ required: true, message: 'Chọn vai trò' }]}
-            extra="Mặc định là giáo viên. Chỉ chọn admin khi người này thực sự quản lý cả trung tâm — vai trò quyết định phạm vi dữ liệu nhìn thấy."
           >
             <Select options={LUA_CHON_VAI_TRO} />
           </Form.Item>
 
           <Form.Item
-            label="Mật khẩu đầu tiên"
+            label="Mật khẩu khởi tạo"
             name="matKhauTamThoi"
             rules={QUY_TAC_MAT_KHAU}
             extra={GHI_CHU_MAT_KHAU}
@@ -135,7 +119,7 @@ export function ThemGiaoVienModal({ open, onClose }: { open: boolean; onClose: (
             name="ngayThamGia"
             rules={[{ required: true, message: 'Chọn ngày tham gia' }]}
           >
-            <DatePicker format="DD/MM/YYYY" style={{ width: 200 }} />
+            <DatePicker format="DD/MM/YYYY" style={{ width: 180 }} />
           </Form.Item>
 
           <Form.Item
@@ -145,7 +129,7 @@ export function ThemGiaoVienModal({ open, onClose }: { open: boolean; onClose: (
           >
             <Input.TextArea
               rows={2}
-              placeholder="Ví dụ: dạy được toán lớp 12, chỉ dạy buổi tối"
+              placeholder="Nhập ghi chú (tuỳ chọn)"
               allowClear
             />
           </Form.Item>
@@ -157,11 +141,6 @@ export function ThemGiaoVienModal({ open, onClose }: { open: boolean; onClose: (
             </Button>
           </Flex>
         </Form>
-
-        <Typography.Text type="secondary" style={{ fontSize: 12 }}>
-          Tài khoản tạo xong ở trạng thái “Đang làm”. Không có chức năng tự đăng ký thành admin: tài
-          khoản đầu tiên do seed tạo, các tài khoản sau do admin tạo ở đây.
-        </Typography.Text>
       </Flex>
     </Modal>
   )

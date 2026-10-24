@@ -17,22 +17,13 @@ interface GiaTriDayBu {
 }
 
 interface ThemBuoiDayBuModalProps {
-  /** Admin chọn được học sinh của mọi giáo viên, nên nhãn có kèm tên giáo viên. */
   laAdmin: boolean
-  /** Đóng hộp thoại mà không thêm gì. */
   onDong: () => void
-  /** Thêm xong; trả về ngày của buổi vừa tạo để màn hình mở đúng tuần. */
   onDaThem: (ngay: string) => void
 }
 
 /**
- * Hộp thoại thêm một buổi DẠY BÙ ngoài lịch lặp hằng tuần.
- *
- * Buổi này được thêm đúng một lần cho ngày đã chọn và KHÔNG sinh thêm buổi hằng tuần nào: lịch học
- * của học sinh không đổi. Muốn học bù định kỳ thì phải sửa lịch học của học sinh.
- *
- * Component chỉ được mount khi hộp thoại mở, nhờ vậy mỗi lần mở là một form mới — không cần
- * resetFields (gọi reset khi Form chưa mount sẽ cảnh báo của antd).
+ * Hộp thoại thêm buổi dạy bù ngoài lịch học hằng tuần.
  */
 export function ThemBuoiDayBuModal({ laAdmin, onDong, onDaThem }: ThemBuoiDayBuModalProps) {
   const [form] = Form.useForm<GiaTriDayBu>()
@@ -61,8 +52,7 @@ export function ThemBuoiDayBuModal({ laAdmin, onDong, onDaThem }: ThemBuoiDayBuM
       })
 
       message.success(
-        `Đã thêm buổi dạy bù ${gioNgan(buoi.gioBatDau)}–${gioNgan(buoi.gioKetThuc)} ngày ` +
-          `${ngayNgan(buoi.ngay)} cho ${buoi.tenHocSinh}`,
+        `Đã thêm buổi dạy bù ${gioNgan(buoi.gioBatDau)} – ${gioNgan(buoi.gioKetThuc)} ngày ${ngayNgan(buoi.ngay)}`,
       )
       onDaThem(buoi.ngay)
     } catch (error) {
@@ -75,7 +65,7 @@ export function ThemBuoiDayBuModal({ laAdmin, onDong, onDaThem }: ThemBuoiDayBuM
   return (
     <Modal
       open
-      width={560}
+      width={500}
       title="Thêm buổi dạy bù"
       okText="Thêm buổi dạy bù"
       cancelText="Huỷ"
@@ -85,14 +75,6 @@ export function ThemBuoiDayBuModal({ laAdmin, onDong, onDaThem }: ThemBuoiDayBuM
       }}
       onCancel={onDong}
     >
-      <Alert
-        type="info"
-        showIcon
-        style={{ marginBottom: 16 }}
-        message="Buổi dạy bù không sinh thêm buổi hằng tuần"
-        description="Buổi này chỉ được thêm một lần cho đúng ngày đã chọn; lịch học lặp hằng tuần của học sinh không đổi. Buổi mới vẫn ở trạng thái Chưa điểm danh nên nhớ điểm danh sau khi dạy."
-      />
-
       {loi ? <Alert type="error" showIcon message={loi} closable style={{ marginBottom: 16 }} onClose={() => { setLoi(null) }} /> : null}
 
       {hocSinh.isError ? (
@@ -104,7 +86,7 @@ export function ThemBuoiDayBuModal({ laAdmin, onDong, onDaThem }: ThemBuoiDayBuM
           description={
             hocSinh.error instanceof ApiError
               ? hocSinh.error.message
-              : 'Kiểm tra backend rồi mở lại hộp thoại này.'
+              : 'Kiểm tra backend rồi thử lại.'
           }
           action={
             <Button
@@ -123,8 +105,6 @@ export function ThemBuoiDayBuModal({ laAdmin, onDong, onDaThem }: ThemBuoiDayBuM
       <Form<GiaTriDayBu>
         form={form}
         layout="vertical"
-        // Component được mount lại mỗi lần mở nên `dayjs()` ở đây là hôm nay — không phải ngày
-        // của lần mở đầu tiên.
         initialValues={{ ngay: dayjs() }}
         onFinish={(giaTri) => {
           void luu(giaTri)
@@ -134,7 +114,6 @@ export function ThemBuoiDayBuModal({ laAdmin, onDong, onDaThem }: ThemBuoiDayBuM
           label="Học sinh"
           name="hocSinhId"
           rules={[{ required: true, message: 'Chọn học sinh học bù' }]}
-          extra="Chỉ nên chọn học sinh đang học; học sinh đã nghỉ vẫn hiện nhưng không còn buổi hằng tuần."
         >
           <Select
             showSearch
@@ -172,7 +151,7 @@ export function ThemBuoiDayBuModal({ laAdmin, onDong, onDaThem }: ThemBuoiDayBuM
         </Form.Item>
 
         <Form.Item label="Ghi chú" name="ghiChu">
-          <Input.TextArea rows={2} maxLength={1000} showCount placeholder="Ví dụ: dạy bù buổi nghỉ ốm ngày 20/09" />
+          <Input.TextArea rows={2} maxLength={1000} placeholder="Ví dụ: Dạy bù buổi nghỉ ốm" />
         </Form.Item>
       </Form>
     </Modal>

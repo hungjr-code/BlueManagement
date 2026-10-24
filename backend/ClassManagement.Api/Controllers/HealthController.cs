@@ -6,8 +6,8 @@ using Microsoft.EntityFrameworkCore;
 namespace ClassManagement.Api.Controllers;
 
 /// <summary>
-/// Cấu trúc trả về đã chốt với frontend (frontend/src/api/health.ts). Đổi cấu trúc này là phải
-/// sửa cả hai phía, nên nó nằm ngay đây chứ không rải rác.
+/// Hợp đồng cố định của endpoint kiểm tra sức khoẻ (GET /api/health) — các script kiểm tra sau
+/// deploy đọc đúng các trường này, nên cấu trúc nằm ngay đây chứ không rải rác.
 /// </summary>
 public record HealthDatabase(bool CanConnect, string Provider);
 

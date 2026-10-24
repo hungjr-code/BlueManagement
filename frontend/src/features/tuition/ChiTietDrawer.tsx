@@ -34,20 +34,18 @@ import {
   nhanTrangThaiThanhToan,
   tenKyHocPhi,
 } from './hienThi'
-import { LoiApiAlert } from './LoiApiAlert'
+import { LoiApiAlert } from '../../components/LoiApiAlert'
 import { HuyPhieuThuModal } from './HuyPhieuThuModal'
 import { ThuTienModal } from './ThuTienModal'
 
 interface ChiTietDrawerProps {
-  /** Dòng học phí đang xem (lấy ngay từ bảng cho khỏi chờ). null = đóng ngăn kéo. */
   hocPhi: HocPhi | null
   onClose: () => void
 }
 
-/** Diễn giải công thức thành tiền của dòng này bằng chữ, để đối chiếu được với số buổi bên dưới. */
 function moTaCongThuc(dong: HocPhi): string {
   if (dong.cachTinhHocPhi === 'theo_thang') {
-    return `${formatVnd(dong.donGiaApDung)} / tháng (thu đủ tháng, không phụ thuộc số buổi)`
+    return `${formatVnd(dong.donGiaApDung)} / tháng`
   }
   return `${formatVnd(dong.donGiaApDung)} / buổi × (${dong.soBuoiDiHoc} đi học${
     dong.soBuoiNghiKhongPhep > 0 ? ` + ${dong.soBuoiNghiKhongPhep} nghỉ không phép` : ''
@@ -55,11 +53,7 @@ function moTaCongThuc(dong: HocPhi): string {
 }
 
 /**
- * Ngăn kéo chi tiết một dòng học phí.
- *
- * Đây là chỗ trả lời câu "vì sao ra con số này": liệt kê từng buổi trong kỳ (kèm buổi dạy bù) và
- * từng phiếu thu đã ghi — học phí tính từ điểm danh nên phải mở ra xem được, không tin vào một con số
- * tổng. Mọi thay đổi tiền đều làm ở đây: thu tiền, huỷ phiếu thu, và xem mã QR.
+ * Ngăn kéo chi tiết học phí.
  */
 export function ChiTietDrawer({ hocPhi, onClose }: ChiTietDrawerProps) {
   const { nguoiDung } = usePhien()
@@ -70,14 +64,11 @@ export function ChiTietDrawer({ hocPhi, onClose }: ChiTietDrawerProps) {
   const [moQr, datMoQr] = useState(false)
   const [phieuThuDangHuy, datPhieuThuDangHuy] = useState<PhieuThu | null>(null)
 
-  // Bản mới nhất từ API ưu tiên hơn dòng trên bảng: sau khi thu tiền, số đã thu phải đổi ngay.
   const dong = chiTiet.data?.hocPhi ?? hocPhi
   const danhSachBuoi = chiTiet.data?.danhSachBuoi ?? []
   const danhSachPhieuThu = chiTiet.data?.danhSachPhieuThu ?? []
   const tongPhieuThu = danhSachPhieuThu.reduce((tong, phieu) => tong + phieu.soTien, 0)
 
-  // Tài khoản nhận tiền là của TỪNG giáo viên và chỉ người sở hữu đọc được (GET /auth/me), nên mã QR
-  // chỉ sinh được cho học sinh của chính mình — kể cả admin cũng không sinh hộ người khác.
   const laCuaToi = dong !== null && dong.giaoVienId === nguoiDung?.id
 
   const cotBuoi: TableProps<BuoiTrongKy>['columns'] = [
@@ -87,7 +78,6 @@ export function ChiTietDrawer({ hocPhi, onClose }: ChiTietDrawerProps) {
       width: 160,
       render: (_giaTri, buoi) => `${tenThuNgan(thuCua(buoi.ngay))} ${ngayNgan(buoi.ngay)}`,
     },
-    // Backend đã ghép sẵn chuỗi giờ dạng "18:00 – 19:30", không cần cắt lại ở đây.
     { title: 'Giờ', dataIndex: 'gio', width: 130 },
     {
       title: 'Điểm danh',
@@ -138,7 +128,7 @@ export function ChiTietDrawer({ hocPhi, onClose }: ChiTietDrawerProps) {
     {
       title: 'Thao tác',
       key: 'thaoTac',
-      width: 130,
+      width: 120,
       fixed: 'right',
       render: (_giaTri, phieu) => (
         <Button
@@ -192,7 +182,7 @@ export function ChiTietDrawer({ hocPhi, onClose }: ChiTietDrawerProps) {
                 Mã QR
               </Button>
             ) : (
-              <Tooltip title="Mã QR dùng tài khoản nhận tiền của giáo viên dạy học sinh này; chỉ giáo viên đó sinh được mã, admin cũng không sinh hộ.">
+              <Tooltip title="Mã QR sử dụng tài khoản nhận tiền của giáo viên phụ trách học sinh.">
                 <Button icon={<QrcodeOutlined />} disabled>
                   Mã QR
                 </Button>
@@ -218,8 +208,7 @@ export function ChiTietDrawer({ hocPhi, onClose }: ChiTietDrawerProps) {
             <Alert
               type="warning"
               showIcon
-              message={`Còn ${dong.soBuoiChuaDiemDanh} buổi trong kỳ chưa điểm danh`}
-              description="Thành tiền chỉ tính những buổi đã điểm danh, nên con số dưới đây có thể còn thay đổi. Điểm danh nốt ở màn hình Điểm danh rồi bấm “Tính học phí kỳ này” để cập nhật."
+              message={`Còn ${dong.soBuoiChuaDiemDanh} buổi học trong kỳ chưa điểm danh`}
             />
           ) : null}
 
@@ -227,8 +216,7 @@ export function ChiTietDrawer({ hocPhi, onClose }: ChiTietDrawerProps) {
             <Alert
               type="success"
               showIcon
-              message="Dòng này đã chốt sổ"
-              description="Con số đã chốt được giữ nguyên, lần “Tính học phí kỳ này” sau sẽ bỏ qua dòng này. Muốn tính lại thì admin phải mở chốt sổ."
+              message="Khoản học phí này đã chốt sổ"
             />
           ) : null}
 
@@ -236,14 +224,14 @@ export function ChiTietDrawer({ hocPhi, onClose }: ChiTietDrawerProps) {
             <Descriptions.Item label="Học sinh">{dong.tenHocSinh}</Descriptions.Item>
             <Descriptions.Item label="Giáo viên">{dong.tenGiaoVien}</Descriptions.Item>
             <Descriptions.Item label="Kỳ">{moTaKy(dong.thang, dong.nam)}</Descriptions.Item>
-            <Descriptions.Item label="Hạn đóng tiền">{ngayNgan(dong.hanDongTien)}</Descriptions.Item>
+            <Descriptions.Item label="Hạn đóng">{ngayNgan(dong.hanDongTien)}</Descriptions.Item>
             <Descriptions.Item label="Cách tính">
               <Tag color={mauCachTinh(dong.cachTinhHocPhi)}>{nhanCachTinh(dong.cachTinhHocPhi)}</Tag>
             </Descriptions.Item>
             <Descriptions.Item label="Đơn giá">{formatVnd(dong.donGiaApDung)}</Descriptions.Item>
             <Descriptions.Item label="Số buổi">
-              {dong.soBuoiDiHoc} đi học · {dong.soBuoiNghiCoPhep} nghỉ có phép ·{' '}
-              {dong.soBuoiNghiKhongPhep} nghỉ không phép · {dong.soBuoiChuaDiemDanh} chưa điểm danh
+              {dong.soBuoiDiHoc} đi học · {dong.soBuoiNghiCoPhep} có phép ·{' '}
+              {dong.soBuoiNghiKhongPhep} không phép · {dong.soBuoiChuaDiemDanh} chưa điểm danh
             </Descriptions.Item>
             <Descriptions.Item label="Trạng thái">
               <Tag color={mauTrangThaiThanhToan(dong.trangThaiThanhToan)}>
@@ -256,9 +244,9 @@ export function ChiTietDrawer({ hocPhi, onClose }: ChiTietDrawerProps) {
                 {moTaCongThuc(dong)}
               </Typography.Text>
             </Descriptions.Item>
-            <Descriptions.Item label="Đã thu / còn lại">
+            <Descriptions.Item label="Đã thu / Còn lại">
               {formatVnd(dong.soTienDaThu)} /{' '}
-              <Typography.Text type={dong.conLai > 0 ? 'danger' : undefined}>
+              <Typography.Text type={dong.conLai > 0 ? 'danger' : undefined} strong>
                 {formatVnd(dong.conLai)}
               </Typography.Text>
             </Descriptions.Item>
@@ -267,11 +255,6 @@ export function ChiTietDrawer({ hocPhi, onClose }: ChiTietDrawerProps) {
           <Card
             size="small"
             title={`Các buổi trong kỳ (${danhSachBuoi.length})`}
-            extra={
-              <Typography.Text type="secondary" style={{ fontSize: 12 }}>
-                Buổi chưa điểm danh chưa được tính tiền
-              </Typography.Text>
-            }
           >
             <Table<BuoiTrongKy>
               size="small"
@@ -290,10 +273,10 @@ export function ChiTietDrawer({ hocPhi, onClose }: ChiTietDrawerProps) {
             <Alert
               type="warning"
               showIcon
-              message="Tổng phiếu thu không khớp số đã thu của dòng"
-              description={`Tổng phiếu thu ${formatVnd(tongPhieuThu)} nhưng dòng học phí ghi đã thu ${formatVnd(
+              message="Tổng phiếu thu không khớp số đã thu"
+              description={`Tổng phiếu thu ${formatVnd(tongPhieuThu)} khác với số tiền đã ghi nhận ${formatVnd(
                 dong.soTienDaThu,
-              )}. Số liệu lệch nhau, nên báo lại người quản trị trước khi thu thêm.`}
+              )}.`}
             />
           ) : null}
 
@@ -317,21 +300,15 @@ export function ChiTietDrawer({ hocPhi, onClose }: ChiTietDrawerProps) {
                 emptyText: (
                   <Empty
                     image={Empty.PRESENTED_IMAGE_SIMPLE}
-                    description="Chưa ghi phiếu thu nào cho kỳ này"
+                    description="Chưa có phiếu thu nào"
                   />
                 ),
               }}
             />
           </Card>
-
-          <Typography.Text type="secondary" style={{ fontSize: 12 }}>
-            Số buổi và thành tiền đếm từ điểm danh, không sửa tay được: muốn đổi tiền thì sửa điểm danh
-            rồi tính lại kỳ. Thu vượt số còn lại bị chặn, huỷ phiếu thu bắt buộc nêu lý do.
-          </Typography.Text>
         </Flex>
       )}
 
-      {/* Chỉ dựng hộp thoại khi thật sự mở: form khởi tạo đúng theo dòng đang thu, không cần effect. */}
       {moThuTien && dong ? (
         <ThuTienModal
           hocPhi={dong}

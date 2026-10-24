@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Alert, App, Button, Card, Divider, Flex, Form, Input, Typography } from 'antd'
-import { GoogleOutlined, LockOutlined, MailOutlined } from '@ant-design/icons'
+import { CalendarOutlined, GoogleOutlined, LockOutlined, MailOutlined } from '@ant-design/icons'
 import { Link, Navigate, useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { usePhien } from '../../app/session'
@@ -18,12 +18,7 @@ interface ViTriCoDuongDanQuayLai {
 }
 
 /**
- * Trang đăng nhập. Tài khoản do admin tạo, không có chức năng tự đăng ký: admin đầu tiên sinh bằng
- * seed ở backend khi khởi động lần đầu.
- *
- * Đăng nhập bằng Google cũng chỉ dành cho tài khoản đã có sẵn (so khớp theo email): có Gmail không
- * có nghĩa là được vào hệ thống. Đổi lại, một lần cấp quyền vừa đăng nhập vừa nối luôn lịch Google
- * của người đó, nên buổi học của họ lên lịch được ngay từ bước này.
+ * Trang đăng nhập tối giản.
  */
 export function LoginPage() {
   const { nguoiDung, dangNhap } = usePhien()
@@ -31,22 +26,20 @@ export function LoginPage() {
   const navigate = useNavigate()
   const viTri = useLocation()
   const [thamSo, datThamSo] = useSearchParams()
-  // Máy chủ có đang cấu hình Google thật không: chưa cấu hình thì nút Google chỉ dẫn tới lỗi, còn
-  // đang ở chế độ giả thì phải nói thẳng ra — nếu không người dùng tưởng mình vừa đăng nhập bằng Google.
+
   const tuyChon = useQuery({
     queryKey: ['tuy-chon-dang-nhap'],
     queryFn: layTuyChonDangNhap,
     staleTime: 5 * 60 * 1000,
     retry: false,
   })
+
   const cheDoGiaGoogle = tuyChon.data?.googleCheDoGia === true
   const googleChuaCauHinh = tuyChon.data != null && !tuyChon.data.googleDaCauHinh && !cheDoGiaGoogle
   const [dangGui, setDangGui] = useState(false)
   const [dangMoGoogle, datDangMoGoogle] = useState(false)
   const [loi, setLoi] = useState<string | null>(null)
 
-  // Google trả người dùng về kèm kết quả trong query string, nên chính query string là nguồn sự
-  // thật — không cần state riêng cho nó.
   const loiTuGoogle =
     thamSo.get('google') === 'loi'
       ? (thamSo.get('thongBao') ?? 'Đăng nhập bằng Google không thành công.')
@@ -58,7 +51,6 @@ export function LoginPage() {
     return <Navigate to="/" replace />
   }
 
-  /** Mở màn hình đồng ý của Google ở tab mới, không rời trang đăng nhập. */
   const moTrangGoogle = async () => {
     datDangMoGoogle(true)
     setLoi(null)
@@ -90,14 +82,46 @@ export function LoginPage() {
   }
 
   return (
-    <Flex align="center" justify="center" style={{ minHeight: '100vh', padding: 16 }}>
-      <Card style={{ width: 420 }} variant="outlined">
-        <Flex vertical gap={4} style={{ marginBottom: 20 }}>
-          <Typography.Title level={4} style={{ margin: 0 }}>
+    <Flex
+      align="center"
+      justify="center"
+      style={{
+        minHeight: '100vh',
+        padding: 24,
+        background: 'linear-gradient(180deg, #F0F5FD 0%, #F8FAFD 100%)',
+      }}
+    >
+      <Card
+        style={{
+          width: 400,
+          borderRadius: 16,
+          border: '1px solid #E6EDF5',
+          boxShadow: '0 8px 30px -4px rgba(91, 141, 239, 0.12)',
+        }}
+        variant="outlined"
+      >
+        <Flex vertical gap={6} align="center" style={{ marginBottom: 24, textAlign: 'center' }}>
+          <div
+            style={{
+              width: 44,
+              height: 44,
+              borderRadius: 12,
+              background: '#EDF4FD',
+              color: '#4377D9',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontSize: 22,
+              marginBottom: 4,
+            }}
+          >
+            <CalendarOutlined />
+          </div>
+          <Typography.Title level={4} style={{ margin: 0, fontWeight: 700, letterSpacing: '-0.01em' }}>
             {env.appName}
           </Typography.Title>
-          <Typography.Text type="secondary">
-            Quản lý dạy kèm: lịch dạy, điểm danh, học phí và thu tiền bằng mã QR.
+          <Typography.Text type="secondary" style={{ fontSize: 13 }}>
+            Đăng nhập để quản lý lớp học và lịch dạy
           </Typography.Text>
         </Flex>
 
@@ -124,7 +148,7 @@ export function LoginPage() {
           }}
         >
           <Form.Item
-            label="Email đăng nhập"
+            label="Email"
             name="email"
             rules={[
               { required: true, message: 'Nhập email đăng nhập' },
@@ -133,7 +157,7 @@ export function LoginPage() {
           >
             <Input
               size="large"
-              prefix={<MailOutlined style={{ marginInlineEnd: 6 }} />}
+              prefix={<MailOutlined style={{ color: '#94A3B8', marginInlineEnd: 6 }} />}
               placeholder="ten@trungtam.vn"
               autoComplete="username"
               autoFocus
@@ -145,15 +169,15 @@ export function LoginPage() {
             name="matKhau"
             rules={[{ required: true, message: 'Nhập mật khẩu' }]}
             extra={
-              <Flex justify="flex-end">
-                <Link to="/quen-mat-khau">Quên mật khẩu?</Link>
+              <Flex justify="flex-end" style={{ marginTop: 4 }}>
+                <Link to="/quen-mat-khau" style={{ fontSize: 12 }}>Quên mật khẩu?</Link>
               </Flex>
             }
           >
             <Input.Password
               size="large"
-              prefix={<LockOutlined style={{ marginInlineEnd: 6 }} />}
-              placeholder="Mật khẩu do admin cấp"
+              prefix={<LockOutlined style={{ color: '#94A3B8', marginInlineEnd: 6 }} />}
+              placeholder="Nhập mật khẩu"
               autoComplete="current-password"
             />
           </Form.Item>
@@ -163,31 +187,11 @@ export function LoginPage() {
           </Button>
         </Form>
 
-        <Divider plain style={{ marginBlock: 16 }}>
+        <Divider plain style={{ marginBlock: 20 }}>
           <Typography.Text type="secondary" style={{ fontSize: 12 }}>
             hoặc
           </Typography.Text>
         </Divider>
-
-        {cheDoGiaGoogle ? (
-          <Alert
-            type="warning"
-            showIcon
-            style={{ marginBottom: 12 }}
-            message="Chế độ giả của máy dev — KHÔNG phải Google thật"
-            description="Máy chủ đang bật GoogleCalendar:CheDoGia. Nút dưới đây không mở trang của Google mà đăng nhập thẳng một tài khoản cố định để thử luồng ở máy dev. Muốn đăng nhập bằng Google thật thì đặt ClientId/ClientSecret rồi tắt CheDoGia."
-          />
-        ) : null}
-
-        {googleChuaCauHinh ? (
-          <Alert
-            type="info"
-            showIcon
-            style={{ marginBottom: 12 }}
-            message="Máy chủ chưa cấu hình Google"
-            description="Chưa có GoogleCalendar:ClientId và ClientSecret nên chưa đăng nhập bằng Google được. Đặt hai khoá đó trong user-secrets của backend rồi chạy lại API (xem README backend, mục đăng nhập bằng Google)."
-          />
-        ) : null}
 
         <Button
           size="large"
@@ -199,30 +203,15 @@ export function LoginPage() {
             void moTrangGoogle()
           }}
         >
-          {cheDoGiaGoogle ? 'Đăng nhập bằng Google (chế độ giả)' : 'Đăng nhập bằng Google'}
+          Đăng nhập bằng Google
         </Button>
-        <Typography.Paragraph type="secondary" style={{ fontSize: 12, marginTop: 10, marginBottom: 0 }}>
-          Google sẽ hỏi quyền xem email và quyền quản lý sự kiện trên lịch. Một lần đồng ý là xong: vừa
-          đăng nhập, vừa nối luôn lịch để buổi học của bạn tự lên đó. Lần đầu đăng nhập bằng email Google
-          nào thì hệ thống tạo tài khoản giáo viên cho email đó.
-        </Typography.Paragraph>
 
-        <Alert
-          type="info"
-          showIcon
-          style={{ marginTop: 16 }}
-          message="Chưa có tài khoản?"
-          description={
-            <Flex vertical gap={4}>
-              <span>
-                Bạn tự tạo được tài khoản giáo viên bằng email hoặc bằng Google — nhưng{' '}
-                <strong>không tự phong được mình làm admin</strong>. Quyền quản trị chỉ do admin hiện có
-                đặt, hoặc sinh bằng seed ở máy chủ.
-              </span>
-              <Link to="/dang-ky">Tạo tài khoản mới</Link>
-            </Flex>
-          }
-        />
+        <Flex justify="center" gap={6} style={{ marginTop: 20 }}>
+          <Typography.Text type="secondary" style={{ fontSize: 13 }}>
+            Chưa có tài khoản?
+          </Typography.Text>
+          <Link to="/dang-ky" style={{ fontSize: 13 }}>Tạo tài khoản</Link>
+        </Flex>
       </Card>
     </Flex>
   )

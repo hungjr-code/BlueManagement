@@ -90,29 +90,8 @@ export function moTaHanDong(ngay: number): string {
   return `mùng ${ngay} hằng tháng`
 }
 
-export interface LoiTheoField {
-  field: string
-  thongDiep: string
-}
-
-/** Lỗi validate của backend tách theo từng field (ProblemDetails.errors). */
-export function loiTheoField(error: unknown): LoiTheoField[] {
-  const problem = error instanceof ApiError ? error.problem : undefined
-  if (!problem?.errors) return []
-  return Object.entries(problem.errors).flatMap(([field, danhSach]) =>
-    danhSach.map((thongDiep) => ({ field, thongDiep })),
-  )
-}
-
-/** Một dòng mô tả lỗi để hiện trong Alert khi không tách được theo từng field. */
-export function thongBaoLoi(error: unknown, macDinh: string): string {
-  const theoField = loiTheoField(error)
-  if (theoField.length > 0) {
-    return theoField.map((item) => `${item.field}: ${item.thongDiep}`).join(' · ')
-  }
-  if (error instanceof ApiError) return error.message
-  return macDinh
-}
+// Cách đọc lỗi API bê lên dùng chung — xem src/lib/loiApi.ts.
+export { loiTheoField, moTaLoi } from '../../lib/loiApi'
 
 /** Backend trả 409 khi tạo học sinh trùng tên với học sinh đã có của cùng giáo viên. */
 export function laLoiTrungTen(error: unknown): boolean {

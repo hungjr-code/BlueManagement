@@ -243,6 +243,19 @@ using (var phamVi = app.Services.CreateScope())
     var ghiLog = dichVu.GetRequiredService<ILoggerFactory>().CreateLogger("KhoiDong");
     var tuyChonSeed = app.Configuration.GetSection(SeedOptions.TenMuc).Get<SeedOptions>() ?? new SeedOptions();
 
+    // Cảnh báo sớm cấu hình Google nửa vời: có ClientId/ClientSecret nhưng ba địa chỉ vẫn là chỗ trống
+    // của tài liệu ⇒ Google chuyển hướng về tên miền không tồn tại và người dùng chỉ thấy "đăng nhập
+    // bằng Google không được". Nói thẳng tên biến cần đặt, ngay trong log lúc khởi động.
+    if (tuyChonGoogle.DaCauHinh && tuyChonGoogle.DiaChiConChoTrong)
+    {
+        ghiLog.LogWarning(
+            "GoogleCalendar đã có ClientId/ClientSecret nhưng địa chỉ còn là chỗ trống: RedirectUri={Uri}, "
+            + "RedirectUriDangNhap={UriDangNhap}, FrontendUrl={FrontendUrl}. "
+            + "Đặt ba giá trị này theo tên miền thật (biến môi trường trên máy chủ) và khai đúng hai "
+            + "redirect URI đó trong Google Cloud Console, nếu không Google sẽ chuyển hướng về tên miền không tồn tại.",
+            tuyChonGoogle.RedirectUri, tuyChonGoogle.RedirectUriDangNhap, tuyChonGoogle.FrontendUrl);
+    }
+
     if (app.Environment.IsDevelopment())
     {
         // Máy dev thì tự chạy migration cho tiện. Máy chạy thật phải chạy tay bằng

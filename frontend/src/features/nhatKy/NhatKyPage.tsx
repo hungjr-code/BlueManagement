@@ -16,10 +16,6 @@ import type { BoLocNhatKy, DongNhatKy } from '../../api/nhatKy'
 
 const { RangePicker } = DatePicker
 
-/**
- * Màu theo nhóm việc, để liếc là biết dòng nào ĐỔI SỐ LIỆU (cam/đỏ) và dòng nào chỉ tạo mới (xanh).
- * Việc lạ không có trong bảng thì để màu mặc định — không chặn hiển thị.
- */
 const MAU_HANH_DONG: Record<string, string> = {
   sua_diem_danh: 'orange',
   cho_hoc_sinh_nghi: 'red',
@@ -32,7 +28,6 @@ const MAU_HANH_DONG: Record<string, string> = {
   mo_khoa_so: 'red',
 }
 
-/** Chuỗi JSON trong nhật ký → khối JSON dễ đọc. Không parse được thì in nguyên văn, không nuốt dữ liệu. */
 function docJson(chuoi: string | null): string | null {
   if (!chuoi) return null
   try {
@@ -43,10 +38,7 @@ function docJson(chuoi: string | null): string | null {
 }
 
 /**
- * Nhật ký thay đổi: ai đổi cái gì, lúc nào, từ giá trị nào sang giá trị nào.
- *
- * Giáo viên chỉ đọc được nhật ký do CHÍNH MÌNH thực hiện — backend chặn thật, màn hình này chỉ nói
- * rõ phạm vi để người dùng không tưởng là thiếu dữ liệu.
+ * Nhật ký thay đổi dữ liệu trong hệ thống.
  */
 export function NhatKyPage() {
   const { nguoiDung } = usePhien()
@@ -66,7 +58,6 @@ export function NhatKyPage() {
         ? 'Không tải được nhật ký.'
         : null
 
-  /** Đổi một điều kiện lọc thì phải quay về trang 1, nếu không sẽ đứng ở trang không còn dữ liệu. */
   const locTheo = (thayDoi: Partial<BoLocNhatKy>) => {
     datBoLoc((cu) => ({ ...cu, ...thayDoi, trang: thayDoi.trang ?? 1 }))
   }
@@ -86,7 +77,7 @@ export function NhatKyPage() {
         ten ?? <Typography.Text type="secondary">Hệ thống</Typography.Text>,
     },
     {
-      title: 'Việc',
+      title: 'Hành động',
       dataIndex: 'hanhDong',
       width: 200,
       render: (hanhDong: string) => (
@@ -94,7 +85,7 @@ export function NhatKyPage() {
       ),
     },
     {
-      title: 'Bảng bị tác động',
+      title: 'Đối tượng tác động',
       dataIndex: 'doiTuong',
       width: 200,
       render: (doiTuong: string, dong) => (
@@ -109,7 +100,7 @@ export function NhatKyPage() {
       ),
     },
     {
-      title: 'Nơi gửi',
+      title: 'Địa chỉ IP',
       dataIndex: 'diaChiIp',
       width: 140,
       render: (ip: string | null) => ip ?? '—',
@@ -120,22 +111,10 @@ export function NhatKyPage() {
     <>
       <PageHeader
         title="Nhật ký"
-        description="Ai đổi cái gì, lúc nào, từ giá trị nào sang giá trị nào — để tra lại khi số liệu đổi bất thường."
+        description="Lịch sử thay đổi và kiểm toán dữ liệu hệ thống."
       />
 
-      <Alert
-        type="info"
-        showIcon
-        style={{ marginBottom: 16 }}
-        message={laAdmin ? 'Bạn đang xem toàn bộ nhật ký của trung tâm' : 'Bạn chỉ thấy nhật ký do chính mình thực hiện'}
-        description={
-          laAdmin
-            ? 'Có thể lọc theo người thực hiện. Nhật ký do hệ thống tự làm (tự tạo tài khoản, tự đồng bộ) không có người thực hiện.'
-            : 'Sửa đổi của người khác không hiện ở đây — kể cả khi nó tác động tới học sinh của bạn. Muốn xem toàn bộ thì hỏi admin.'
-        }
-      />
-
-      <Card size="small" title="Bộ lọc" style={{ marginBottom: 16 }}>
+      <Card size="small" title="Bộ lọc nhật ký" style={{ marginBottom: 16 }}>
         <Flex gap={12} wrap align="center">
           <RangePicker
             format="DD/MM/YYYY"
@@ -148,8 +127,8 @@ export function NhatKyPage() {
 
           <Select
             allowClear
-            placeholder="Loại việc"
-            style={{ minWidth: 200 }}
+            placeholder="Loại hành động"
+            style={{ minWidth: 180 }}
             value={boLoc.hanhDong}
             options={(danhMuc.data?.hanhDong ?? []).map((hanhDong) => ({
               value: hanhDong,
@@ -162,8 +141,8 @@ export function NhatKyPage() {
 
           <Select
             allowClear
-            placeholder="Bảng bị tác động"
-            style={{ minWidth: 200 }}
+            placeholder="Bảng dữ liệu"
+            style={{ minWidth: 180 }}
             value={boLoc.doiTuong}
             options={(danhMuc.data?.doiTuong ?? []).map((doiTuong) => ({
               value: doiTuong,
@@ -179,7 +158,7 @@ export function NhatKyPage() {
               allowClear
               showSearch
               placeholder="Người thực hiện"
-              style={{ minWidth: 220 }}
+              style={{ minWidth: 200 }}
               optionFilterProp="label"
               value={boLoc.nguoiThucHienId}
               options={(giaoVien.data?.duLieu ?? []).map((nguoi) => ({
@@ -221,17 +200,20 @@ export function NhatKyPage() {
         columns={cot}
         dataSource={duLieu?.duLieu ?? []}
         expandable={{
-          // Mở được mới hiện mũi tên: dòng chỉ có hành động mà không có ảnh chụp thì không có gì xem.
           rowExpandable: (dong) => Boolean(dong.duLieuTruoc || dong.duLieuSau),
           expandedRowRender: (dong) => (
             <Flex vertical gap={12}>
               <div>
-                <Typography.Text strong>Trước</Typography.Text>
-                <pre style={{ margin: 0, whiteSpace: 'pre-wrap', fontSize: 12, lineHeight: 1.5 }}>{docJson(dong.duLieuTruoc) ?? '—'}</pre>
+                <Typography.Text strong>Trước thay đổi:</Typography.Text>
+                <pre style={{ margin: '4px 0 0', whiteSpace: 'pre-wrap', fontSize: 12, lineHeight: 1.5, background: '#F8FAFD', padding: 8, borderRadius: 6 }}>
+                  {docJson(dong.duLieuTruoc) ?? '—'}
+                </pre>
               </div>
               <div>
-                <Typography.Text strong>Sau</Typography.Text>
-                <pre style={{ margin: 0, whiteSpace: 'pre-wrap', fontSize: 12, lineHeight: 1.5 }}>{docJson(dong.duLieuSau) ?? '—'}</pre>
+                <Typography.Text strong>Sau thay đổi:</Typography.Text>
+                <pre style={{ margin: '4px 0 0', whiteSpace: 'pre-wrap', fontSize: 12, lineHeight: 1.5, background: '#F8FAFD', padding: 8, borderRadius: 6 }}>
+                  {docJson(dong.duLieuSau) ?? '—'}
+                </pre>
               </div>
             </Flex>
           ),

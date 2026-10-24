@@ -29,7 +29,7 @@ import type {
   TrangThaiHocSinh,
 } from '../../api/types'
 import { THU_TRONG_TUAN } from '../../config/lichTuan'
-import { LoiApiAlert } from './LoiApiAlert'
+import { LoiApiAlert } from '../../components/LoiApiAlert'
 import { CACH_TINH_HOC_PHI, TRANG_THAI_HOC_SINH, laLoiTrungTen } from './hienThi'
 
 /** Một tuần chỉ có 7 ngày, nên tối đa 7 khung giờ — backend cũng chặn ở ngưỡng này. */
@@ -181,7 +181,6 @@ export function FormHocSinh({
   const giaTriBanDau = hocSinh ? giaTriTuHocSinh(hocSinh) : giaTriTaoMoi(giaoVienMacDinhId)
   const cachTinhHocPhi = Form.useWatch('cachTinhHocPhi', form)
   const giaoVienDangChon = Form.useWatch('giaoVienId', form)
-  const trangThaiDangChon = Form.useWatch('trangThai', form)
   const lichHocTheoDoi = Form.useWatch('lichHoc', form)
 
   // useWatch còn undefined ở lần render đầu, lấy tạm số khung giờ hiện có để không nháy "0 buổi".
@@ -408,7 +407,6 @@ export function FormHocSinh({
                 label="Ngày bắt đầu học"
                 name="ngayBatDau"
                 rules={[{ required: true, message: 'Chọn ngày bắt đầu' }]}
-                extra="Hệ thống chỉ sinh buổi học từ ngày này trở đi."
               >
                 <DatePicker format="DD/MM/YYYY" placeholder="dd/mm/yyyy" style={{ width: '100%' }} />
               </Form.Item>
@@ -418,9 +416,8 @@ export function FormHocSinh({
                 label="Lớp / nhóm học"
                 name="lop"
                 rules={[{ max: 100, message: 'Lớp tối đa 100 ký tự' }]}
-                extra="Ví dụ: Lớp 9, Toán 9A, IELTS 5.0 — hiện ngay trên ô lịch cạnh tên học sinh."
               >
-                <Input placeholder="Lớp 9" allowClear />
+                <Input placeholder="Ví dụ: Lớp 9A" allowClear />
               </Form.Item>
 
               <Form.Item label="Phụ huynh" name="phuHuynh">
@@ -438,11 +435,6 @@ export function FormHocSinh({
             label="Trạng thái"
             name="trangThai"
             rules={[{ required: true, message: 'Chọn trạng thái' }]}
-            extra={
-              laSua
-                ? undefined
-                : 'Học sinh mới luôn bắt đầu ở trạng thái Đang học hoặc Tạm nghỉ. Muốn cho nghỉ hẳn thì dùng nút "Cho nghỉ" ở danh sách.'
-            }
           >
             <Select
               style={{ maxWidth: 220 }}
@@ -452,27 +444,17 @@ export function FormHocSinh({
             />
           </Form.Item>
 
-          {laSua && trangThaiDangChon === 'da_nghi' && hocSinh.trangThai !== 'da_nghi' ? (
-            <Alert
-              type="warning"
-              showIcon
-              message="Đổi trạng thái ở đây chỉ đổi nhãn"
-              description="Nút 'Cho nghỉ' ngoài danh sách mới là thao tác đầy đủ: nó còn bỏ các buổi chưa dạy từ hôm nay để không sinh buổi mới. Cả hai cách đều giữ nguyên lịch sử điểm danh và học phí."
-            />
-          ) : null}
-
           <Form.Item label="Ghi chú" name="ghiChu">
             <Input.TextArea
               rows={2}
               allowClear
-              placeholder="Ví dụ: học sinh yếu phần hình học, cần kiểm tra bài cũ"
+              placeholder="Nhập ghi chú cho học sinh (tuỳ chọn)"
             />
           </Form.Item>
 
           <Form.Item
-            label={`Lịch học hằng tuần — ${soKhungGio} buổi/tuần`}
+            label={`Lịch học hằng tuần (${soKhungGio} buổi/tuần)`}
             required
-            extra="Số buổi mỗi tuần luôn bằng số khung giờ khai ở đây, hệ thống tự tính lại khi thêm hoặc xoá khung."
           >
             <Form.List name="lichHoc" rules={[nhanLichHoc]}>
               {(fields, { add, remove }, { errors }) => (

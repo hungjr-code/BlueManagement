@@ -34,12 +34,11 @@ const cot: TableProps<TongHopDiemDanh>['columns'] = [
 interface BangTongHopProps {
   tieuDe: string
   duLieu: TongHopDiemDanh[]
-  ghiChu: string
+  ghiChu?: string
 }
 
 /**
- * Bảng tổng hợp điểm danh cuối tuần. Số liệu do backend đếm từ bảng điểm danh
- * (`tongHopTheoHocSinh` / `tongHopTheoGiaoVien`) — không có số nào nhập tay ở đây.
+ * Bảng tổng hợp điểm danh cuối tuần.
  */
 export function BangTongHop({ tieuDe, duLieu, ghiChu }: BangTongHopProps) {
   return (
@@ -61,9 +60,11 @@ export function BangTongHop({ tieuDe, duLieu, ghiChu }: BangTongHopProps) {
           scroll={{ x: 830 }}
         />
       )}
-      <Typography.Paragraph type="secondary" style={{ marginTop: 12, marginBottom: 0, fontSize: 12 }}>
-        {ghiChu}
-      </Typography.Paragraph>
+      {ghiChu ? (
+        <Typography.Paragraph type="secondary" style={{ marginTop: 12, marginBottom: 0, fontSize: 12 }}>
+          {ghiChu}
+        </Typography.Paragraph>
+      ) : null}
     </Card>
   )
 }

@@ -1,8 +1,12 @@
 #!/usr/bin/env python3
 """Kiểm tra sau deploy — chạy từ máy của bạn, KHÔNG cần cài gì thêm (chỉ dùng thư viện chuẩn).
 
-    python deploy/kiem-tra-sau-deploy.py https://<fe>.pages.dev https://<be>.onrender.com \
+    python deploy/kiem-tra-sau-deploy.py https://<ten-mien> https://<ten-mien> \
         --email admin@classmanagement.local --mat-khau "<mat khau admin>"
+
+Mô hình đang dùng là MỘT tên miền (API phục vụ luôn giao diện), nên truyền CÙNG một địa chỉ cho cả
+hai tham số. Script vẫn nhận hai tham số khác nhau để soát được kiến trúc tách tên miền nếu ai đó
+định quay lại cách đó.
 
 Việc mật khẩu chỉ dùng để đăng nhập thử, không lưu lại đâu cả.
 

@@ -16,10 +16,7 @@ interface GiaTriDangKy {
 }
 
 /**
- * Tự tạo tài khoản bằng email và mật khẩu, hoặc bằng Google.
- *
- * Tài khoản tự tạo LUÔN là giáo viên: mở cho tự đăng ký nhưng không mở luôn quyền quản trị, nên
- * người lạ có đăng ký cũng không đụng được vào dữ liệu của người khác.
+ * Đăng ký tài khoản giáo viên mới.
  */
 export function RegisterPage() {
   const { nguoiDung, dangKy } = usePhien()
@@ -46,7 +43,7 @@ export function RegisterPage() {
     setLoi(null)
     try {
       await dangKy(giaTri.hoTen.trim(), giaTri.email.trim(), giaTri.matKhau)
-      message.success('Đã tạo tài khoản và đăng nhập')
+      message.success('Đã tạo tài khoản thành công')
       navigate('/', { replace: true })
     } catch (error) {
       const loiApi = error instanceof ApiError ? error : null
@@ -73,7 +70,7 @@ export function RegisterPage() {
   return (
     <KhungTaiKhoan
       tieuDe="Tạo tài khoản mới"
-      moTa="Tài khoản do bạn tự tạo luôn là tài khoản giáo viên. Admin sẽ gán học sinh cho bạn sau."
+      moTa="Đăng ký tài khoản để bắt đầu quản lý lớp học"
     >
       {loi ? (
         <Alert
@@ -95,10 +92,10 @@ export function RegisterPage() {
           void gui(giaTri)
         }}
       >
-        <Form.Item label="Tên của bạn" name="hoTen" rules={[{ required: true, message: 'Nhập tên của bạn' }]}>
+        <Form.Item label="Họ và tên" name="hoTen" rules={[{ required: true, message: 'Nhập họ và tên' }]}>
           <Input
             size="large"
-            prefix={<UserOutlined style={{ marginInlineEnd: 6 }} />}
+            prefix={<UserOutlined style={{ color: '#94A3B8', marginInlineEnd: 6 }} />}
             placeholder="Nguyễn Thu Hà"
             autoComplete="name"
             autoFocus
@@ -115,7 +112,7 @@ export function RegisterPage() {
         >
           <Input
             size="large"
-            prefix={<MailOutlined style={{ marginInlineEnd: 6 }} />}
+            prefix={<MailOutlined style={{ color: '#94A3B8', marginInlineEnd: 6 }} />}
             placeholder="ten@trungtam.vn"
             autoComplete="username"
           />
@@ -132,29 +129,29 @@ export function RegisterPage() {
         >
           <Input.Password
             size="large"
-            prefix={<LockOutlined style={{ marginInlineEnd: 6 }} />}
-            placeholder="Mật khẩu"
+            prefix={<LockOutlined style={{ color: '#94A3B8', marginInlineEnd: 6 }} />}
+            placeholder="Nhập mật khẩu"
             autoComplete="new-password"
           />
         </Form.Item>
 
         <Form.Item
-          label="Nhập lại mật khẩu"
+          label="Xác nhận mật khẩu"
           name="xacNhan"
           dependencies={['matKhau']}
           rules={[
-            { required: true, message: 'Nhập lại mật khẩu' },
+            { required: true, message: 'Xác nhận lại mật khẩu' },
             ({ getFieldValue }) => ({
               validator: (_, giaTri: string) =>
                 !giaTri || getFieldValue('matKhau') === giaTri
                   ? Promise.resolve()
-                  : Promise.reject(new Error('Hai lần nhập mật khẩu không giống nhau')),
+                  : Promise.reject(new Error('Hai lần nhập mật khẩu không khớp')),
             }),
           ]}
         >
           <Input.Password
             size="large"
-            prefix={<LockOutlined style={{ marginInlineEnd: 6 }} />}
+            prefix={<LockOutlined style={{ color: '#94A3B8', marginInlineEnd: 6 }} />}
             placeholder="Nhập lại mật khẩu"
             autoComplete="new-password"
           />
@@ -165,31 +162,11 @@ export function RegisterPage() {
         </Button>
       </Form>
 
-      <Divider plain style={{ marginBlock: 16 }}>
+      <Divider plain style={{ marginBlock: 20 }}>
         <Typography.Text type="secondary" style={{ fontSize: 12 }}>
           hoặc
         </Typography.Text>
       </Divider>
-
-      {cheDoGiaGoogle ? (
-        <Alert
-          type="warning"
-          showIcon
-          style={{ marginBottom: 12 }}
-          message="Chế độ giả của máy dev — KHÔNG phải Google thật"
-          description="Nút dưới đây không mở trang của Google mà tự nhận một tài khoản cố định để thử luồng ở máy dev."
-        />
-      ) : null}
-
-      {googleChuaCauHinh ? (
-        <Alert
-          type="info"
-          showIcon
-          style={{ marginBottom: 12 }}
-          message="Máy chủ chưa cấu hình Google"
-          description="Chưa có ClientId/ClientSecret nên chưa đăng ký bằng Google được. Dùng email và mật khẩu ở trên, hoặc nhờ quản trị máy chủ cấu hình."
-        />
-      ) : null}
 
       <Button
         size="large"
@@ -203,14 +180,10 @@ export function RegisterPage() {
       >
         Đăng ký bằng Google
       </Button>
-      <Typography.Paragraph type="secondary" style={{ fontSize: 12, marginTop: 10 }}>
-        Đăng ký bằng Google thì không cần đặt mật khẩu: lần sau cứ bấm nút Google là vào. Muốn có mật
-        khẩu thì dùng chức năng quên mật khẩu để đặt.
-      </Typography.Paragraph>
 
-      <Flex justify="center" gap={6}>
-        <Typography.Text type="secondary">Đã có tài khoản?</Typography.Text>
-        <Link to="/login">Đăng nhập</Link>
+      <Flex justify="center" gap={6} style={{ marginTop: 20 }}>
+        <Typography.Text type="secondary" style={{ fontSize: 13 }}>Đã có tài khoản?</Typography.Text>
+        <Link to="/login" style={{ fontSize: 13 }}>Đăng nhập</Link>
       </Flex>
     </KhungTaiKhoan>
   )

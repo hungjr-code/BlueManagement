@@ -2,24 +2,14 @@ import { useState } from 'react'
 import { Alert, Button, Flex, Form, Input, Result, Typography } from 'antd'
 import { MailOutlined } from '@ant-design/icons'
 import { Link } from 'react-router-dom'
-import { useQuery } from '@tanstack/react-query'
 import { ApiError } from '../../api/http'
-import { layTuyChonDangNhap, quenMatKhau } from '../../api/auth'
+import { quenMatKhau } from '../../api/auth'
 import { KhungTaiKhoan } from './khungTach'
 
 /**
- * Xin thư đặt lại mật khẩu.
- *
- * Câu trả lời CỐ TÌNH giống nhau dù email có tài khoản hay không — nói khác nhau là để người ngoài
- * dò ra email nào đã đăng ký trong hệ thống.
+ * Yêu cầu đặt lại mật khẩu qua email.
  */
 export function ForgotPasswordPage() {
-  const tuyChon = useQuery({
-    queryKey: ['tuy-chon-dang-nhap'],
-    queryFn: layTuyChonDangNhap,
-    staleTime: 5 * 60 * 1000,
-    retry: false,
-  })
   const [dangGui, setDangGui] = useState(false)
   const [loi, setLoi] = useState<string | null>(null)
   const [daGui, setDaGui] = useState(false)
@@ -41,11 +31,11 @@ export function ForgotPasswordPage() {
 
   if (daGui) {
     return (
-      <KhungTaiKhoan tieuDe="Kiểm tra hộp thư" moTa="Yêu cầu đặt lại mật khẩu đã được ghi nhận.">
+      <KhungTaiKhoan tieuDe="Kiểm tra hộp thư" moTa="Yêu cầu đặt lại mật khẩu đã được ghi nhận">
         <Result
           status="success"
-          title="Nếu email này có tài khoản, thư hướng dẫn đã được gửi"
-          subTitle="Thư có liên kết đặt lại mật khẩu, dùng được một lần trong 30 phút. Kiểm tra cả hộp thư rác nếu không thấy."
+          title="Đã gửi thư hướng dẫn"
+          subTitle="Vui lòng kiểm tra hộp thư (kể cả thư mục spam) để nhận liên kết đặt lại mật khẩu trong 30 phút."
           extra={[
             <Link key="dang-nhap" to="/login">
               <Button type="primary">Về trang đăng nhập</Button>
@@ -59,28 +49,8 @@ export function ForgotPasswordPage() {
   return (
     <KhungTaiKhoan
       tieuDe="Quên mật khẩu"
-      moTa="Nhập email của tài khoản, hệ thống sẽ gửi thư để bạn đặt mật khẩu mới."
+      moTa="Nhập email của bạn để nhận liên kết đặt lại mật khẩu"
     >
-      {tuyChon.data?.emailCheDoGia ? (
-        <Alert
-          type="warning"
-          showIcon
-          style={{ marginBottom: 16 }}
-          message="Chế độ giả của máy dev — thư không đi đâu cả"
-          description="Máy chủ đang bật Email:CheDoGia nên thư đặt lại mật khẩu chỉ nằm trong bộ nhớ của máy chủ, không tới hộp thư của bạn. Muốn thử đường thật thì cấu hình SMTP rồi tắt CheDoGia."
-        />
-      ) : null}
-
-      {tuyChon.data != null && !tuyChon.data.emailDaCauHinh && !tuyChon.data.emailCheDoGia ? (
-        <Alert
-          type="info"
-          showIcon
-          style={{ marginBottom: 16 }}
-          message="Máy chủ chưa cấu hình gửi thư"
-          description="Chưa có Email:SmtpHost và Email:TuDiaChi nên hệ thống không gửi được thư đặt lại mật khẩu. Nhờ quản trị máy chủ cấu hình SMTP (xem README backend)."
-        />
-      ) : null}
-
       {loi ? (
         <Alert
           type="error"
@@ -111,7 +81,7 @@ export function ForgotPasswordPage() {
         >
           <Input
             size="large"
-            prefix={<MailOutlined style={{ marginInlineEnd: 6 }} />}
+            prefix={<MailOutlined style={{ color: '#94A3B8', marginInlineEnd: 6 }} />}
             placeholder="ten@trungtam.vn"
             autoComplete="username"
             autoFocus
@@ -119,13 +89,13 @@ export function ForgotPasswordPage() {
         </Form.Item>
 
         <Button type="primary" size="large" htmlType="submit" block loading={dangGui}>
-          Gửi thư đặt lại mật khẩu
+          Gửi yêu cầu
         </Button>
       </Form>
 
-      <Flex justify="center" gap={6} style={{ marginTop: 16 }}>
-        <Typography.Text type="secondary">Nhớ ra mật khẩu rồi?</Typography.Text>
-        <Link to="/login">Đăng nhập</Link>
+      <Flex justify="center" gap={6} style={{ marginTop: 20 }}>
+        <Typography.Text type="secondary" style={{ fontSize: 13 }}>Nhớ lại mật khẩu?</Typography.Text>
+        <Link to="/login" style={{ fontSize: 13 }}>Đăng nhập</Link>
       </Flex>
     </KhungTaiKhoan>
   )

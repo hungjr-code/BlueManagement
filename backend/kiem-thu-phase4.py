@@ -204,7 +204,9 @@ def main() -> int:
                 if ma_bu == 201:
                     break
 
-            ma, diem_danh = goi(f"/api/attendance?tuNgay={dau_tuan}&denNgay={dau_tuan + timedelta(days=6)}",
+            # Hỏi lại CẢ KỲ: buổi dạy bù vừa thêm nằm ở hôm nay hoặc vài ngày tới, nên hỏi mỗi tuần
+            # này sẽ không thấy nó (và bước dưới đòi >= 2 buổi trong kỳ).
+            ma, diem_danh = goi(f"/api/attendance?tuNgay={dau_thang}&denNgay={cuoi_thang}",
                                 token=token_a)
             buoi_cua_em = [b for b in diem_danh["duLieu"]
                            if b["hocSinhId"] == dong_theo_buoi["hocSinhId"] and b["ngay"].startswith(thang_nay)]

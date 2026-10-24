@@ -1,35 +1,33 @@
 /**
- * Màu của từng học sinh trên ô lịch.
- *
- * Bảng màu cố tình NHẠT (nền rất nhạt, viền mảnh, chữ đậm): ô lịch là chỗ để ĐỌC — ai học lúc nào —
- * nên màu chỉ giúp phân biệt người này với người kia, không phải để trang trí. Mỗi học sinh luôn ra
- * đúng một màu (băm id) nên nhìn sang ô khác vẫn theo dõi được cùng một em.
+ * Bảng màu pastel nhẹ nhàng cho từng học sinh trên ô lịch.
+ * Nền pastel trang nhã, viền mảnh thanh lịch, chữ sắc nét dễ đọc.
+ * Mỗi học sinh có một mã màu ổn định (băm id) xuyên suốt các màn hình.
  */
 export interface MauHocSinh {
-  /** Nền của thẻ. */
+  /** Nền của thẻ */
   nen: string
-  /** Viền và vạch màu bên trái. */
+  /** Viền và vạch màu */
   vien: string
-  /** Màu chữ cho tên học sinh. */
+  /** Màu chữ cho tên học sinh */
   chu: string
 }
 
 const BANG_MAU: MauHocSinh[] = [
-  { nen: '#fdf4f4', vien: '#eec4c4', chu: '#8a2c2c' },
-  { nen: '#fdf8ef', vien: '#eeddb2', chu: '#7a5410' },
-  { nen: '#f6faef', vien: '#d5e6bb', chu: '#47621c' },
-  { nen: '#f1f9f4', vien: '#bde2ce', chu: '#1f6b42' },
-  { nen: '#eff9f9', vien: '#b7e3e1', chu: '#116057' },
-  { nen: '#f0f7fd', vien: '#bfdbf0', chu: '#1d5a8a' },
-  { nen: '#f2f4fd', vien: '#c7cef0', chu: '#33418c' },
-  { nen: '#f7f3fd', vien: '#d6c9f0', chu: '#5b3a91' },
-  { nen: '#fdf3f9', vien: '#f0c5e0', chu: '#8a2b64' },
-  { nen: '#faf7f2', vien: '#e4d6c1', chu: '#6b5433' },
-  { nen: '#f4f6f8', vien: '#cdd6de', chu: '#3d4b57' },
-  { nen: '#fdf5f1', vien: '#f0cebc', chu: '#8a4a2a' },
+  { nen: '#F0F6FE', vien: '#CCE0FA', chu: '#1E40AF' }, // Sky Pastel
+  { nen: '#F2F4FE', vien: '#D0D7FB', chu: '#3730A3' }, // Indigo Pastel
+  { nen: '#F0FDFB', vien: '#CCF5F0', chu: '#115E59' }, // Teal Pastel
+  { nen: '#F2FAF5', vien: '#CDEBD9', chu: '#166534' }, // Emerald Pastel
+  { nen: '#FFF1F2', vien: '#FECDD3', chu: '#9F1239' }, // Rose Pastel
+  { nen: '#F5F3FF', vien: '#DDD6FE', chu: '#5B21B6' }, // Lavender Pastel
+  { nen: '#FFFBEB', vien: '#FDE68A', chu: '#92400E' }, // Amber Pastel
+  { nen: '#ECFEFF', vien: '#BAE6FD', chu: '#075985' }, // Cyan Pastel
+  { nen: '#F8FAFC', vien: '#CBD5E1', chu: '#334155' }, // Slate Pastel
+  { nen: '#FFF7ED', vien: '#FED7AA', chu: '#9A3412' }, // Warm Coral Pastel
+  { nen: '#FAF5FF', vien: '#E9D5FF', chu: '#6B21A8' }, // Purple Pastel
+  { nen: '#F1F5F9', vien: '#CBD5E1', chu: '#1E293B' }, // Cool Gray Pastel
 ]
 
-/** Băm chuỗi thành số nguyên dương — chỉ cần ổn định, không cần phân bố đẹp. */
+/** Băm chuỗi thành số nguyên dương ổn định. */
 function bam(chuoi: string): number {
   let giaTri = 0
   for (let viTri = 0; viTri < chuoi.length; viTri += 1) {
@@ -38,7 +36,7 @@ function bam(chuoi: string): number {
   return giaTri
 }
 
-/** Màu cố định của một học sinh. Cùng id thì mọi màn hình ra cùng màu. */
+/** Màu cố định của một học sinh theo ID. */
 export function mauCuaHocSinh(hocSinhId: string): MauHocSinh {
   return BANG_MAU[bam(hocSinhId) % BANG_MAU.length]
 }

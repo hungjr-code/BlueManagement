@@ -18,7 +18,7 @@ import { useThuTienHocPhi } from '../../api/tuition'
 import type { HinhThucThanhToan, HocPhi } from '../../api/tuition'
 import { formatVnd } from '../../lib/money'
 import { HINH_THUC_THANH_TOAN, moTaKy } from './hienThi'
-import { LoiApiAlert } from './LoiApiAlert'
+import { LoiApiAlert } from '../../components/LoiApiAlert'
 
 interface GiaTriThuTien {
   soTien: number
@@ -28,20 +28,12 @@ interface GiaTriThuTien {
 }
 
 interface ThuTienModalProps {
-  /** Dòng học phí đang thu. Component chỉ được dựng khi đã chọn dòng (đang có mặt = đang mở). */
   hocPhi: HocPhi
   onClose: () => void
 }
 
 /**
- * Ghi một lần thu tiền cho một dòng học phí.
- *
- * Số tiền mặc định là **số còn lại** vì phần lớn lần thu là thu trọn; thu vượt số còn lại bị backend
- * chặn (400) nên chặn luôn ở đây cho người dùng biết trước. Ngày thu mặc định hôm nay và không cho
- * chọn ngày tương lai — sổ không ghi tiền chưa nhận.
- *
- * Giá trị mặc định đặt bằng `initialValues` chứ không bằng effect: hộp thoại được gắn kèm dòng học phí
- * nên mỗi lần mở là một lần dựng mới, form luôn khởi tạo đúng theo dòng đang thu.
+ * Ghi nhận phiếu thu tiền học phí.
  */
 export function ThuTienModal({ hocPhi, onClose }: ThuTienModalProps) {
   const [form] = Form.useForm<GiaTriThuTien>()
@@ -72,13 +64,13 @@ export function ThuTienModal({ hocPhi, onClose }: ThuTienModalProps) {
       open
       title={`Thu tiền — ${hocPhi.tenHocSinh}`}
       footer={null}
-      width={480}
+      width={460}
       onCancel={onClose}
     >
       <Flex vertical gap={12}>
-        <Typography.Text type="secondary">
-          {moTaKy(hocPhi.thang, hocPhi.nam)} · thành tiền {formatVnd(hocPhi.thanhTien)} · đã thu{' '}
-          {formatVnd(hocPhi.soTienDaThu)} · còn lại{' '}
+        <Typography.Text type="secondary" style={{ fontSize: 13 }}>
+          {moTaKy(hocPhi.thang, hocPhi.nam)} · Phải thu {formatVnd(hocPhi.thanhTien)} · Đã thu{' '}
+          {formatVnd(hocPhi.soTienDaThu)} · Còn lại{' '}
           <Typography.Text strong>{formatVnd(hocPhi.conLai)}</Typography.Text>
         </Typography.Text>
 
@@ -86,8 +78,7 @@ export function ThuTienModal({ hocPhi, onClose }: ThuTienModalProps) {
           <Alert
             type="success"
             showIcon
-            message="Dòng này đã thu đủ"
-            description="Không còn gì để thu. Thu thừa bị chặn — muốn thu thêm thì phải sửa điểm danh để học phí tăng lên trước."
+            message="Khoản học phí này đã thu đủ"
           />
         ) : null}
 
@@ -113,9 +104,7 @@ export function ThuTienModal({ hocPhi, onClose }: ThuTienModalProps) {
                   if (giaTri <= 0) return Promise.reject(new Error('Số tiền phải lớn hơn 0'))
                   if (giaTri > conLai) {
                     return Promise.reject(
-                      new Error(
-                        `Số tiền vượt quá số còn lại (${formatVnd(conLai)}). Thu thừa thì phải sửa học phí trước.`,
-                      ),
+                      new Error(`Số tiền vượt quá số còn lại (${formatVnd(conLai)})`),
                     )
                   }
                   return Promise.resolve()
@@ -139,7 +128,7 @@ export function ThuTienModal({ hocPhi, onClose }: ThuTienModalProps) {
           </Form.Item>
 
           <Form.Item
-            label="Hình thức"
+            label="Hình thức thanh toán"
             name="hinhThuc"
             rules={[{ required: true, message: 'Chọn hình thức thu tiền' }]}
           >
@@ -155,7 +144,6 @@ export function ThuTienModal({ hocPhi, onClose }: ThuTienModalProps) {
             label="Ngày thu"
             name="ngayThu"
             rules={[{ required: true, message: 'Chọn ngày thu' }]}
-            extra="Không ghi được ngày ở tương lai."
           >
             <DatePicker
               style={{ width: '100%' }}
@@ -165,7 +153,7 @@ export function ThuTienModal({ hocPhi, onClose }: ThuTienModalProps) {
           </Form.Item>
 
           <Form.Item label="Ghi chú" name="ghiChu">
-            <Input.TextArea rows={2} placeholder="Ví dụ: phụ huynh chuyển khoản trước 3 ngày" />
+            <Input.TextArea rows={2} placeholder="Nhập ghi chú (tuỳ chọn)" />
           </Form.Item>
 
           <Flex justify="end" gap={8}>
@@ -176,7 +164,7 @@ export function ThuTienModal({ hocPhi, onClose }: ThuTienModalProps) {
               loading={thuTien.isPending}
               disabled={conLai <= 0}
             >
-              Thu tiền
+              Xác nhận thu tiền
             </Button>
           </Flex>
         </Form>

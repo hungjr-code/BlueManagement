@@ -31,11 +31,7 @@ import { KhoiGoogleCalendar } from './KhoiGoogleCalendar'
 import { nhanTrangThaiBuoi, thoiDiemDiaPhuong } from './hienThiLich'
 
 /**
- * Lịch dạy dạng ô lịch: tuần hoặc tháng, mỗi ô một ngày, trong ô là các thẻ học sinh có màu riêng.
- *
- * Dữ liệu vẫn lấy từ `GET /api/attendance?tuNgay=&denNgay=` — đúng nguồn màn hình Điểm danh đang dùng,
- * nên lịch và điểm danh không bao giờ lệch nhau. Mở khoảng nào thì backend tự sinh bù buổi của khoảng
- * đó từ lịch học lặp hằng tuần.
+ * Lịch dạy dạng ô lịch: tuần hoặc tháng, mỗi ô một ngày.
  */
 export function SchedulePage() {
   const { nguoiDung } = usePhien()
@@ -51,13 +47,11 @@ export function SchedulePage() {
   const buoiHoc = useBuoiHoc({
     tuNgay: khoang.tuNgay,
     denNgay: khoang.denNgay,
-    // Giáo viên đã bị backend giới hạn theo chính họ; chỉ admin mới lọc được người khác.
     ...(laAdmin && giaoVienId ? { giaoVienId } : {}),
   })
   const danhSachGiaoVien = useDanhSachGiaoVien({ kichThuoc: 200 })
   const duLieu = buoiHoc.data?.duLieu ?? []
 
-  /** Buổi của từng ngày, xếp theo giờ rồi tới tên — trong ô lịch phải theo thứ tự thời gian. */
   const theoNgay = new Map<string, BuoiHoc[]>()
   for (const buoi of [...duLieu].sort(
     (a, b) => a.gioBatDau.localeCompare(b.gioBatDau) || a.tenHocSinh.localeCompare(b.tenHocSinh),
@@ -76,7 +70,7 @@ export function SchedulePage() {
     <>
       <PageHeader
         title="Lịch dạy"
-        description={`${khoang.moTa} · ${duLieu.length} buổi${laHienTai(cheDo, mocNgay) ? ' · đang xem hiện tại' : ''}`}
+        description={`${khoang.moTa} · ${duLieu.length} buổi`}
         extra={
           <Space size={8} wrap>
             <Segmented<CheDoXem>
@@ -114,8 +108,8 @@ export function SchedulePage() {
                 allowClear
                 showSearch
                 optionFilterProp="label"
-                placeholder="Mọi giáo viên"
-                style={{ width: 200 }}
+                placeholder="Tất cả giáo viên"
+                style={{ width: 190 }}
                 value={giaoVienId}
                 loading={danhSachGiaoVien.isPending}
                 options={(danhSachGiaoVien.data?.duLieu ?? []).map((giaoVien) => ({
@@ -147,7 +141,7 @@ export function SchedulePage() {
           message="Không đọc được lịch dạy"
           description={
             buoiHoc.error instanceof ApiError && buoiHoc.error.isNetworkError
-              ? 'Không kết nối được backend. Kiểm tra API đã chạy ở cổng 5080 chưa rồi thử lại.'
+              ? 'Không kết nối được backend. Kiểm tra API đang chạy rồi thử lại.'
               : (buoiHoc.error?.message ?? 'Lỗi không xác định')
           }
           action={
@@ -169,13 +163,7 @@ export function SchedulePage() {
       ) : !buoiHoc.isError && duLieu.length === 0 ? (
         <Empty
           image={Empty.PRESENTED_IMAGE_SIMPLE}
-          description={
-            <Typography.Text type="secondary">
-              {khoang.moTa} chưa có buổi học nào. Buổi học được sinh từ lịch học lặp hằng tuần của học
-              sinh đang học — có thể học sinh chưa khai lịch, hoặc lịch không rơi vào ngày nào của
-              khoảng này.
-            </Typography.Text>
-          }
+          description="Không có buổi học nào trong khoảng thời gian này"
         >
           <Button
             type="primary"
@@ -248,16 +236,16 @@ export function SchedulePage() {
         }
       >
         {chiTiet ? (
-          <Flex vertical gap={14}>
+          <Flex vertical gap={16}>
             <div>
               <Typography.Text type="secondary" style={{ fontSize: 12 }}>
                 Học sinh
               </Typography.Text>
-              <Typography.Title level={5} style={{ margin: 0 }}>
+              <Typography.Title level={5} style={{ margin: 0, marginTop: 2 }}>
                 {chiTiet.tenHocSinh}
               </Typography.Title>
               <Typography.Text type="secondary">
-                {chiTiet.lopHocSinh ?? 'chưa khai lớp'}
+                {chiTiet.lopHocSinh ?? 'Chưa khai lớp'}
               </Typography.Text>
             </div>
 
@@ -265,9 +253,9 @@ export function SchedulePage() {
               <Typography.Text type="secondary" style={{ fontSize: 12 }}>
                 Thời gian
               </Typography.Text>
-              <div>
+              <div style={{ marginTop: 2, fontWeight: 500 }}>
                 {tenThu(thuCua(chiTiet.ngay))}, {ngayNgan(chiTiet.ngay)} ·{' '}
-                {gioNgan(chiTiet.gioBatDau)}–{gioNgan(chiTiet.gioKetThuc)}
+                {gioNgan(chiTiet.gioBatDau)} – {gioNgan(chiTiet.gioKetThuc)}
               </div>
             </div>
 
@@ -275,12 +263,14 @@ export function SchedulePage() {
               <Typography.Text type="secondary" style={{ fontSize: 12 }}>
                 Giáo viên &amp; trạng thái
               </Typography.Text>
-              <Flex vertical gap={6} align="flex-start">
-                <span>{chiTiet.tenGiaoVien}</span>
+              <Flex vertical gap={6} align="flex-start" style={{ marginTop: 2 }}>
+                <span style={{ fontWeight: 500 }}>{chiTiet.tenGiaoVien}</span>
                 <Space size={6} wrap>
                   <Tag color={nhanTrangThaiBuoi(chiTiet).mau}>{nhanTrangThaiBuoi(chiTiet).nhan}</Tag>
-                  {chiTiet.laBuoiDayBu ? <Tag>buổi dạy bù</Tag> : null}
-                  {chiTiet.daDongBoGoogle ? <Tag>đã lên Google</Tag> : <Tag>chưa lên Google</Tag>}
+                  {chiTiet.laBuoiDayBu ? <Tag color="purple">Buổi dạy bù</Tag> : null}
+                  {chiTiet.daDongBoGoogle ? (
+                    <Tag color="cyan">Đã đồng bộ Google</Tag>
+                  ) : null}
                 </Space>
                 {chiTiet.daDongBoGoogle ? (
                   <Typography.Text type="secondary" style={{ fontSize: 12 }}>
@@ -292,21 +282,23 @@ export function SchedulePage() {
 
             <div>
               <Typography.Text type="secondary" style={{ fontSize: 12 }}>
-                Người điểm danh &amp; ghi chú
+                Điểm danh &amp; ghi chú
               </Typography.Text>
-              <div>
-                {chiTiet.nguoiDiemDanh ?? 'chưa ai điểm danh'}
+              <div style={{ marginTop: 2 }}>
+                {chiTiet.nguoiDiemDanh ?? 'Chưa điểm danh'}
                 {chiTiet.thoiDiemDiemDanhUtc
                   ? ` · ${thoiDiemDiaPhuong(chiTiet.thoiDiemDiemDanhUtc)}`
                   : ''}
               </div>
-              <Typography.Paragraph type="secondary" style={{ marginBottom: 0 }}>
-                {chiTiet.ghiChu ?? 'không có ghi chú'}
-              </Typography.Paragraph>
+              {chiTiet.ghiChu ? (
+                <Typography.Paragraph type="secondary" style={{ marginTop: 4, marginBottom: 0 }}>
+                  {chiTiet.ghiChu}
+                </Typography.Paragraph>
+              ) : null}
             </div>
 
-            <Typography.Text type="secondary" style={{ fontSize: 12 }}>
-              Ngày {dayjs(chiTiet.ngay).format('DD/MM/YYYY')} · định danh buổi {chiTiet.id.slice(0, 8)}…
+            <Typography.Text type="secondary" style={{ fontSize: 12, marginTop: 8 }}>
+              {dayjs(chiTiet.ngay).format('DD/MM/YYYY')}
             </Typography.Text>
           </Flex>
         ) : null}

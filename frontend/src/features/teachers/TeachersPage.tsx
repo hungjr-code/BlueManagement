@@ -12,75 +12,10 @@ import { ThemGiaoVienModal } from './ThemGiaoVienModal'
 import { SuaGiaoVienModal } from './SuaGiaoVienModal'
 import { DatLaiMatKhauModal } from './DatLaiMatKhauModal'
 
-interface DongPhamVi {
-  key: string
-  quyen: string
-  admin: string
-  giaoVien: string
-}
-
-const phamVi: DongPhamVi[] = [
-  {
-    key: '1',
-    quyen: 'Xem học sinh',
-    admin: 'Tất cả học sinh, lọc được theo giáo viên',
-    giaoVien: 'Chỉ học sinh do mình phụ trách',
-  },
-  {
-    key: '2',
-    quyen: 'Thêm / sửa học sinh',
-    admin: 'Mọi học sinh, gán được giáo viên phụ trách',
-    giaoVien: 'Chỉ học sinh của mình, không đổi được giáo viên phụ trách',
-  },
-  {
-    key: '3',
-    quyen: 'Điểm danh',
-    admin: 'Xem tất cả, sửa được và mọi thay đổi vào nhật ký',
-    giaoVien: 'Chỉ điểm danh buổi học của mình',
-  },
-  {
-    key: '4',
-    quyen: 'Học phí',
-    admin: 'Toàn bộ, xem được tổng thu và doanh thu theo giáo viên',
-    giaoVien: 'Chỉ học phí của học sinh mình dạy',
-  },
-  {
-    key: '5',
-    quyen: 'Quản lý giáo viên',
-    admin: 'Thêm, gán vai trò, vô hiệu hoá tài khoản',
-    giaoVien: 'Chỉ xem hồ sơ của chính mình',
-  },
-]
-
-const cotPhamVi: TableProps<DongPhamVi>['columns'] = [
-  { title: 'Quyền', dataIndex: 'quyen', width: 200 },
-  {
-    title: (
-      <Space>
-        Admin (chủ)
-        <Tag color="gold">toàn quyền</Tag>
-      </Space>
-    ),
-    dataIndex: 'admin',
-  },
-  {
-    title: (
-      <Space>
-        Giáo viên
-        <Tag color="blue">giới hạn</Tag>
-      </Space>
-    ),
-    dataIndex: 'giaoVien',
-  },
-]
-
 const KICH_THUOC_MAC_DINH = 10
 
 /**
- * Danh sách giáo viên thật từ `GET /api/teachers` (phân trang phía server).
- *
- * Chỉ admin thấy nút thêm / sửa / đặt lại mật khẩu. Giáo viên vào chỉ thấy đúng hồ sơ của mình —
- * backend đã chặn, việc ẩn nút ở đây chỉ để gọn mắt.
+ * Danh sách giáo viên và tài khoản.
  */
 export function TeachersPage() {
   const { nguoiDung } = usePhien()
@@ -107,9 +42,9 @@ export function TeachersPage() {
       key: 'hoTen',
       width: 200,
       render: (hoTen: string, giaoVien: GiaoVien) => (
-        <Space size={4}>
+        <Space size={6}>
           <Typography.Text strong>{hoTen}</Typography.Text>
-          {giaoVien.id === nguoiDung?.id ? <Tag color="cyan">bạn</Tag> : null}
+          {giaoVien.id === nguoiDung?.id ? <Tag color="blue">Bạn</Tag> : null}
         </Space>
       ),
     },
@@ -181,7 +116,7 @@ export function TeachersPage() {
     cot.push({
       title: 'Thao tác',
       key: 'thaoTac',
-      width: 250,
+      width: 200,
       fixed: 'right',
       render: (_: unknown, giaoVien: GiaoVien) => (
         <Space size={4}>
@@ -214,7 +149,7 @@ export function TeachersPage() {
     <>
       <PageHeader
         title="Giáo viên"
-        description="Danh sách giáo viên đọc từ backend: vai trò, số học sinh đang phụ trách và số buổi đã dạy trong tháng. Chỉ admin thêm, sửa và đặt lại mật khẩu."
+        description="Quản lý danh sách giáo viên và phân quyền."
       />
       <Card
         size="small"
@@ -223,9 +158,8 @@ export function TeachersPage() {
           <Space wrap>
             <Input.Search
               allowClear
-              enterButton="Tìm"
               placeholder="Tìm theo tên hoặc email"
-              style={{ width: 300 }}
+              style={{ width: 260 }}
               onSearch={(giaTri) => {
                 setTuKhoa(giaTri.trim())
                 setTrang(1)
@@ -245,16 +179,6 @@ export function TeachersPage() {
           </Space>
         }
       >
-        {!laAdmin ? (
-          <Alert
-            type="info"
-            showIcon
-            style={{ marginBottom: 16 }}
-            message="Chỉ admin quản lý tài khoản giáo viên"
-            description="Bạn đang xem hồ sơ của chính mình. Nút thêm / sửa / đặt lại mật khẩu được ẩn ở đây chỉ để gọn mắt — quyền được chặn ở backend: gọi thẳng API của người khác vẫn bị từ chối."
-          />
-        ) : null}
-
         {danhSach.isPending ? (
           <Skeleton active paragraph={{ rows: 6 }} />
         ) : danhSach.isError ? (
@@ -285,13 +209,13 @@ export function TeachersPage() {
             dataSource={danhSach.data?.duLieu ?? []}
             loading={danhSach.isFetching}
             scroll={{ x: 1400 }}
-            locale={{ emptyText: 'Không tìm thấy giáo viên nào khớp từ khoá' }}
+            locale={{ emptyText: 'Không tìm thấy giáo viên nào' }}
             pagination={{
               current: danhSach.data?.trang ?? trang,
               pageSize: danhSach.data?.kichThuoc ?? kichThuoc,
               total: danhSach.data?.tongSo ?? 0,
               showSizeChanger: true,
-              pageSizeOptions: [10, 20, 50, 200],
+              pageSizeOptions: [10, 20, 50],
               showTotal: (tongSo) => `${tongSo} giáo viên`,
               onChange: (trangMoi, kichThuocMoi) => {
                 setTrang(trangMoi)
@@ -300,29 +224,6 @@ export function TeachersPage() {
             }}
           />
         )}
-
-        <Typography.Paragraph type="secondary" style={{ marginTop: 12, marginBottom: 0, fontSize: 12 }}>
-          Số học sinh đang phụ trách và số buổi đã dạy trong tháng do backend đếm (từ bảng học sinh và
-          điểm danh) — không nhập tay, nên con số dùng để tính lương sau này không gõ sai được.
-        </Typography.Paragraph>
-      </Card>
-
-      <Card
-        size="small"
-        title="Phạm vi dữ liệu theo vai trò"
-        extra={<Tag color="purple">2 vai trò</Tag>}
-      >
-        <Table<DongPhamVi>
-          size="small"
-          rowKey="key"
-          columns={cotPhamVi}
-          dataSource={phamVi}
-          pagination={false}
-        />
-        <Typography.Paragraph type="secondary" style={{ marginTop: 12, marginBottom: 0 }}>
-          Nguyên tắc: frontend ẩn nút chỉ là để gọn mắt. Mọi kiểm tra quyền phải làm ở backend —
-          giáo viên gọi thẳng API của người khác vẫn phải bị chặn.
-        </Typography.Paragraph>
       </Card>
 
       {laAdmin ? (

@@ -1,5 +1,6 @@
-import dayjs from 'dayjs'
 import type { BuoiHoc, LyDoNghi, LuuDiemDanhItem, TrangThaiDiemDanh } from '../../api/types'
+
+export { thoiDiemDiaPhuong } from '../../lib/thoiGian'
 
 /**
  * Nhãn tiếng Việt của điểm danh và các phép so sánh dùng chung cho màn hình Điểm danh.
@@ -68,17 +69,4 @@ export function thanhItemLuu(buoiHocId: string, nhap: BanNhapDiemDanh): LuuDiemD
     lyDoNghi: nhap.trangThai === 'nghi' ? nhap.lyDoNghi : null,
     ghiChu: ghiChu === '' ? null : ghiChu,
   }
-}
-
-/**
- * `thoiDiemDiemDanhUtc` là giờ UTC; hiển thị theo giờ máy người dùng.
- *
- * Giá trị đọc từ SQL Server có thể mất hậu tố "Z" (DateTimeKind.Unspecified), lúc đó phải tự
- * gắn lại mới không bị hiển thị lệch 7 tiếng.
- */
-export function thoiDiemDiaPhuong(iso: string | null | undefined): string {
-  if (!iso) return '—'
-
-  const coMuiGio = /(Z|[+-]\d{2}:?\d{2})$/.test(iso)
-  return dayjs(coMuiGio ? iso : `${iso}Z`).format('HH:mm DD/MM/YYYY')
 }

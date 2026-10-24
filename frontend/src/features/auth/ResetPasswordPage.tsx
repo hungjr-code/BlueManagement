@@ -12,8 +12,7 @@ interface GiaTriDatLai {
 }
 
 /**
- * Đặt mật khẩu mới bằng mã trong thư. Mã chỉ dùng được một lần và hết hạn sau 30 phút.
- * Đổi xong thì backend thu hồi mọi phiên đang mở, nên phải đăng nhập lại bằng mật khẩu mới.
+ * Đặt mật khẩu mới.
  */
 export function ResetPasswordPage() {
   const [thamSo] = useSearchParams()
@@ -42,14 +41,14 @@ export function ResetPasswordPage() {
 
   if (!ma) {
     return (
-      <KhungTaiKhoan tieuDe="Đặt lại mật khẩu" moTa="Liên kết này thiếu mã đặt lại mật khẩu.">
+      <KhungTaiKhoan tieuDe="Đặt lại mật khẩu" moTa="Liên kết đặt lại mật khẩu không hợp lệ hoặc đã hết hạn">
         <Result
           status="error"
           title="Liên kết không hợp lệ"
-          subTitle="Nên mở liên kết đúng từ thư đặt lại mật khẩu, hoặc xin một thư mới."
+          subTitle="Vui lòng kiểm tra lại liên kết trong email hoặc gửi lại yêu cầu mới."
           extra={[
             <Link key="quen" to="/quen-mat-khau">
-              <Button type="primary">Xin thư mới</Button>
+              <Button type="primary">Gửi lại yêu cầu</Button>
             </Link>,
           ]}
         />
@@ -59,11 +58,11 @@ export function ResetPasswordPage() {
 
   if (xong) {
     return (
-      <KhungTaiKhoan tieuDe="Đặt lại mật khẩu" moTa="Mật khẩu đã được đổi.">
+      <KhungTaiKhoan tieuDe="Đặt lại mật khẩu" moTa="Mật khẩu của bạn đã được cập nhật thành công">
         <Result
           status="success"
-          title="Đã đặt mật khẩu mới"
-          subTitle="Vì an toàn, mọi phiên đang mở của tài khoản này đã bị đăng xuất hết. Đăng nhập lại bằng mật khẩu mới."
+          title="Đổi mật khẩu thành công"
+          subTitle="Bạn có thể đăng nhập bằng mật khẩu mới ngay bây giờ."
           extra={[
             <Button
               key="dang-nhap"
@@ -81,7 +80,7 @@ export function ResetPasswordPage() {
   }
 
   return (
-    <KhungTaiKhoan tieuDe="Đặt mật khẩu mới" moTa="Mật khẩu mới dùng để đăng nhập bằng email.">
+    <KhungTaiKhoan tieuDe="Đặt mật khẩu mới" moTa="Thiết lập mật khẩu mới cho tài khoản của bạn">
       {loi ? (
         <Alert
           type="error"
@@ -113,7 +112,7 @@ export function ResetPasswordPage() {
         >
           <Input.Password
             size="large"
-            prefix={<LockOutlined style={{ marginInlineEnd: 6 }} />}
+            prefix={<LockOutlined style={{ color: '#94A3B8', marginInlineEnd: 6 }} />}
             placeholder="Mật khẩu mới"
             autoComplete="new-password"
             autoFocus
@@ -125,31 +124,31 @@ export function ResetPasswordPage() {
           name="xacNhan"
           dependencies={['matKhauMoi']}
           rules={[
-            { required: true, message: 'Nhập lại mật khẩu mới' },
+            { required: true, message: 'Xác nhận lại mật khẩu mới' },
             ({ getFieldValue }) => ({
               validator: (_, giaTri: string) =>
                 !giaTri || getFieldValue('matKhauMoi') === giaTri
                   ? Promise.resolve()
-                  : Promise.reject(new Error('Hai lần nhập mật khẩu không giống nhau')),
+                  : Promise.reject(new Error('Hai lần nhập mật khẩu không khớp')),
             }),
           ]}
         >
           <Input.Password
             size="large"
-            prefix={<LockOutlined style={{ marginInlineEnd: 6 }} />}
+            prefix={<LockOutlined style={{ color: '#94A3B8', marginInlineEnd: 6 }} />}
             placeholder="Nhập lại mật khẩu mới"
             autoComplete="new-password"
           />
         </Form.Item>
 
         <Button type="primary" size="large" htmlType="submit" block loading={dangGui}>
-          Đặt mật khẩu mới
+          Cập nhật mật khẩu
         </Button>
       </Form>
 
-      <Flex justify="center" gap={6} style={{ marginTop: 16 }}>
-        <Typography.Text type="secondary">Liên kết hết hạn?</Typography.Text>
-        <Link to="/quen-mat-khau">Xin thư mới</Link>
+      <Flex justify="center" gap={6} style={{ marginTop: 20 }}>
+        <Typography.Text type="secondary" style={{ fontSize: 13 }}>Liên kết hết hạn?</Typography.Text>
+        <Link to="/quen-mat-khau" style={{ fontSize: 13 }}>Gửi lại yêu cầu</Link>
       </Flex>
     </KhungTaiKhoan>
   )

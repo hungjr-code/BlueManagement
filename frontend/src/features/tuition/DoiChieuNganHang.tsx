@@ -26,10 +26,9 @@ import { formatVnd } from '../../lib/money'
 import { docCsv, docNgay, docSoTien, doanCot } from './csv'
 import type { AnhXaCot } from './csv'
 import { coTheGhi, mauMucDoKhop, moTaMucDoKhop, nhanMucDoKhop } from './hienThi'
-import { LoiApiAlert } from './LoiApiAlert'
+import { LoiApiAlert } from '../../components/LoiApiAlert'
 
 interface DongDaDoc {
-  /** Số dòng trong file (dòng 1 là tiêu đề nên dữ liệu bắt đầu từ 2) — để nói rõ dòng nào bị bỏ. */
   dong: number
   ngayChu: string
   ngay: string | null
@@ -46,10 +45,7 @@ function layO(dong: string[], chiSo: number | null): string {
 }
 
 /**
- * Đối chiếu sao kê ngân hàng với sổ học phí: MÁY ĐỀ XUẤT — NGƯỜI XÁC NHẬN.
- *
- * File .csv do trình duyệt đọc (FileReader), không gửi file lên server; `phan-tich` chỉ trả về đề xuất
- * và không ghi gì, chỉ `xac-nhan` mới thành phiếu thu chuyển khoản.
+ * Đối chiếu sao kê ngân hàng với sổ học phí.
  */
 export function DoiChieuNganHang() {
   const { message } = App.useApp()
@@ -68,11 +64,6 @@ export function DoiChieuNganHang() {
   const anhXaMacDinh = useMemo(() => doanCot(bang.tieuDe), [bang])
   const anhXa = anhXaNguoiDung ?? anhXaMacDinh
 
-  /**
-   * Đổi nội dung sao kê là mọi thứ cũ không còn nghĩa: đoán lại cột và bỏ đề xuất của lần trước.
-   * Làm ngay trong sự kiện đổi nội dung (dán, chọn file, xoá) thay vì trong effect — state chỉ đổi ở
-   * một chỗ, không phải suy ra lại sau mỗi lần render.
-   */
   const doiNoiDung = (moi: string) => {
     datNoiDung(moi)
     datAnhXaNguoiDung(null)
@@ -158,9 +149,8 @@ export function DoiChieuNganHang() {
       const ketQua = await xacNhan.mutateAsync(cacCap)
       datKetQuaGhi(ketQua)
       datDaChon([])
-      // Bỏ bảng đề xuất cũ: ghi xong mà bấm lại lần nữa là ghi trùng tiền.
       datDeXuat(null)
-      message.success(`Đã ghi ${ketQua.soDaGhi} phiếu thu chuyển khoản`)
+      message.success(`Đã ghi ${ketQua.soDaGhi} phiếu thu thành công`)
     } catch (error) {
       datLoiXacNhan(error)
     }
@@ -197,12 +187,12 @@ export function DoiChieuNganHang() {
     {
       title: 'Tình trạng',
       key: 'tinhTrang',
-      width: 180,
+      width: 150,
       render: (_giaTri, dong) =>
         dong.lyDoLoi === null ? (
-          <Tag color="green">Đọc được</Tag>
+          <Tag color="green">Hợp lệ</Tag>
         ) : (
-          <Tag color="red">Bỏ qua: {dong.lyDoLoi}</Tag>
+          <Tag color="red">{dong.lyDoLoi}</Tag>
         ),
     },
   ]
@@ -220,7 +210,7 @@ export function DoiChieuNganHang() {
       ),
     },
     {
-      title: 'Nội dung chuyển khoản',
+      title: 'Nội dung',
       key: 'noiDung',
       ellipsis: true,
       render: (_giaTri, muc) => muc.giaoDich.noiDung ?? <Typography.Text type="secondary">—</Typography.Text>,
@@ -228,7 +218,7 @@ export function DoiChieuNganHang() {
     {
       title: 'Mức độ khớp',
       key: 'mucDoKhop',
-      width: 170,
+      width: 140,
       render: (_giaTri, muc) => (
         <Tooltip title={moTaMucDoKhop(muc.mucDoKhop)}>
           <Tag color={mauMucDoKhop(muc.mucDoKhop)}>{nhanMucDoKhop(muc.mucDoKhop)}</Tag>
@@ -238,16 +228,16 @@ export function DoiChieuNganHang() {
     {
       title: 'Lý do',
       dataIndex: 'lyDo',
-      width: 260,
+      width: 240,
       render: (lyDo: string) => <Typography.Text type="secondary">{lyDo}</Typography.Text>,
     },
     {
-      title: 'Đề xuất cho',
+      title: 'Gợi ý cho',
       key: 'hocSinh',
-      width: 190,
+      width: 180,
       render: (_giaTri, muc) =>
         muc.hocPhiId === null ? (
-          <Typography.Text type="secondary">Không ghép được</Typography.Text>
+          <Typography.Text type="secondary">Chưa tìm thấy</Typography.Text>
         ) : (
           <Flex vertical>
             <Typography.Text strong>{muc.tenHocSinh ?? '—'}</Typography.Text>
@@ -267,30 +257,11 @@ export function DoiChieuNganHang() {
       title="Đối chiếu sao kê ngân hàng"
       extra={
         <Typography.Text type="secondary" style={{ fontSize: 12 }}>
-          Máy đề xuất — bạn xác nhận
+          Tự động gợi ý khớp chuyển khoản
         </Typography.Text>
       }
     >
       <Flex vertical gap={16}>
-        <Alert
-          type="info"
-          showIcon
-          message="File sao kê được đọc ngay trong trình duyệt, không gửi lên máy chủ"
-          description={
-            <Flex vertical gap={4}>
-              <Typography.Text>
-                Mỗi ngân hàng xuất một định dạng khác nhau nên hệ thống không tự đọc file: bạn chọn file
-                .csv (hoặc dán nội dung) rồi chỉ lại cột nếu cần. Nội dung chuyển khoản, số tiền và mã
-                giao dịch được gửi lên dưới dạng từng dòng để phân tích.
-              </Typography.Text>
-              <Typography.Text type="secondary">
-                Đối chiếu không phụ thuộc kỳ đang chọn: hệ thống so với MỌI dòng học phí còn nợ, và chỉ
-                dùng tháng hiện tại để nhận ra nội dung có nhắc tới kỳ hay không.
-              </Typography.Text>
-            </Flex>
-          }
-        />
-
         <Space wrap>
           <Upload
             accept=".csv,text/csv"
@@ -306,7 +277,6 @@ export function DoiChieuNganHang() {
                 message.error('Không đọc được file này. Thử mở bằng Excel rồi lưu lại thành .csv.')
               }
               trinhDoc.readAsText(tep, 'UTF-8')
-              // Trả false: không upload file lên backend, chỉ đọc tại máy.
               return false
             }}
           >
@@ -318,15 +288,12 @@ export function DoiChieuNganHang() {
               doiNoiDung('')
             }}
           >
-            Xoá nội dung đã dán
+            Xoá nội dung
           </Button>
-          <Typography.Text type="secondary" style={{ fontSize: 12 }}>
-            Cần cột ngày và cột số tiền; nội dung và mã giao dịch nên có để ghép chắc hơn.
-          </Typography.Text>
         </Space>
 
         <Input.TextArea
-          rows={5}
+          rows={4}
           value={noiDung}
           onChange={(suKien) => {
             doiNoiDung(suKien.target.value)
@@ -344,12 +311,7 @@ export function DoiChieuNganHang() {
             <Descriptions size="small" column={2} bordered>
               <Descriptions.Item label="Số cột">{bang.tieuDe.length}</Descriptions.Item>
               <Descriptions.Item label="Số dòng dữ liệu">{bang.dong.length}</Descriptions.Item>
-              <Descriptions.Item label="Ký tự phân cách">
-                <Typography.Text code>
-                  {bang.phanCach === '\t' ? 'Tab' : bang.phanCach}
-                </Typography.Text>
-              </Descriptions.Item>
-              <Descriptions.Item label="Dòng đọc được">
+              <Descriptions.Item label="Dòng hợp lệ">
                 {hopLe.length} dòng
                 {biBoQua > 0 ? (
                   <Typography.Text type="warning"> · bỏ qua {biBoQua} dòng</Typography.Text>
@@ -359,7 +321,7 @@ export function DoiChieuNganHang() {
 
             <Space wrap>
               <Select<number | null>
-                style={{ width: 240 }}
+                style={{ width: 200 }}
                 placeholder="Cột ngày"
                 value={anhXa.ngay}
                 allowClear
@@ -370,7 +332,7 @@ export function DoiChieuNganHang() {
                 status={anhXa.ngay === null ? 'warning' : undefined}
               />
               <Select<number | null>
-                style={{ width: 240 }}
+                style={{ width: 200 }}
                 placeholder="Cột số tiền"
                 value={anhXa.soTien}
                 allowClear
@@ -381,7 +343,7 @@ export function DoiChieuNganHang() {
                 status={anhXa.soTien === null ? 'warning' : undefined}
               />
               <Select<number | null>
-                style={{ width: 240 }}
+                style={{ width: 200 }}
                 placeholder="Cột nội dung"
                 value={anhXa.noiDung}
                 allowClear
@@ -391,7 +353,7 @@ export function DoiChieuNganHang() {
                 options={bang.tieuDe.map((ten, chiSo) => ({ value: chiSo, label: ten }))}
               />
               <Select<number | null>
-                style={{ width: 240 }}
+                style={{ width: 200 }}
                 placeholder="Cột mã giao dịch"
                 value={anhXa.maGiaoDich}
                 allowClear
@@ -402,16 +364,11 @@ export function DoiChieuNganHang() {
               />
             </Space>
 
-            <Typography.Text type="secondary" style={{ fontSize: 12 }}>
-              Hệ thống tự đoán cột theo tên tiêu đề; {anhXaNguoiDung ? 'bạn đã chỉnh lại' : 'bạn sửa lại được nếu đoán sai'}.
-            </Typography.Text>
-
             {biBoQua > 0 ? (
               <Alert
                 type="warning"
                 showIcon
-                message={`Có ${biBoQua} dòng không đọc được ngày hoặc số tiền nên sẽ KHÔNG được gửi lên`}
-                description="Những dòng đó vẫn hiện trong bảng dưới kèm lý do — kiểm tra cột đã chọn đúng chưa, hoặc sửa lại file."
+                message={`Có ${biBoQua} dòng không đọc được ngày hoặc số tiền`}
               />
             ) : null}
 
@@ -421,8 +378,8 @@ export function DoiChieuNganHang() {
               columns={cotXemTruoc}
               dataSource={daDoc}
               scroll={{ x: 'max-content' }}
-              pagination={{ pageSize: 8, hideOnSinglePage: true, size: 'small' }}
-              locale={{ emptyText: 'Không có dòng dữ liệu nào trong file' }}
+              pagination={{ pageSize: 5, hideOnSinglePage: true, size: 'small' }}
+              locale={{ emptyText: 'Không có dòng dữ liệu nào' }}
             />
 
             <Space>
@@ -437,9 +394,6 @@ export function DoiChieuNganHang() {
               >
                 Phân tích {hopLe.length} giao dịch
               </Button>
-              <Typography.Text type="secondary" style={{ fontSize: 12 }}>
-                Phân tích chỉ trả về đề xuất, chưa ghi gì vào sổ.
-              </Typography.Text>
             </Space>
 
             {loiPhanTich ? (
@@ -452,13 +406,12 @@ export function DoiChieuNganHang() {
                   type="success"
                   showIcon
                   message={`Đã ghi ${ketQuaGhi.soDaGhi} phiếu thu chuyển khoản, tổng ${formatVnd(ketQuaGhi.tongDaGhi)}`}
-                  description="Sổ học phí đã được cập nhật. Nếu còn giao dịch chưa ghép, bấm Phân tích lại để xem đề xuất mới."
                 />
                 {ketQuaGhi.boQua.length > 0 ? (
                   <Alert
                     type="warning"
                     showIcon
-                    message={`${ketQuaGhi.boQua.length} cặp KHÔNG ghi được`}
+                    message={`${ketQuaGhi.boQua.length} cặp không thể ghi`}
                     description={
                       <List
                         size="small"
@@ -489,10 +442,6 @@ export function DoiChieuNganHang() {
                   >
                     Ghi {soChon} cặp đã chọn
                   </Button>
-                  <Typography.Text type="secondary" style={{ fontSize: 12 }}>
-                    Chỉ những dòng có đề xuất trỏ tới học sinh mới tích được. Ghi xong là thành phiếu thu
-                    chuyển khoản có mã giao dịch, không tự động — bạn là người quyết định.
-                  </Typography.Text>
                 </Space>
 
                 <Table<DeXuatDoiChieu>

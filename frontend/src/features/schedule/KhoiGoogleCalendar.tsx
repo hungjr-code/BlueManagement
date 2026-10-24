@@ -9,7 +9,6 @@ import {
   Flex,
   Skeleton,
   Space,
-  Tag,
   Typography,
 } from 'antd'
 import { ReloadOutlined, SyncOutlined } from '@ant-design/icons'
@@ -21,7 +20,6 @@ interface KhoiGoogleCalendarProps {
   laAdmin: boolean
 }
 
-/** Tham số đồng bộ. `tatCaGiaoVien` chỉ admin dùng được; giáo viên gửi lên sẽ ăn 403. */
 interface ThamSoDongBo {
   tuNgay?: string
   denNgay?: string
@@ -29,16 +27,7 @@ interface ThamSoDongBo {
 }
 
 /**
- * Khối trạng thái Google Calendar trên màn hình Lịch dạy.
- *
- * Kết nối là của TỪNG giáo viên: buổi học của ai thì nằm trên lịch Google của người đó. Ai cũng bấm
- * được "Đồng bộ ngay" cho lịch của chính mình; chưa kết nối thì khối này mời họ sang Cài đặt để tự
- * kết nối (việc kết nối/ngắt/chọn lịch nằm ở đó, không phải ở màn hình này).
- *
- * Điều khối này phải nói thật: đồng bộ là MỘT CHIỀU (hệ thống → Google). Sửa trên Google không
- * quay về hệ thống, vì phần webhook hai chiều chưa làm.
- *
- * `laAdmin` chỉ dùng cho tuỳ chọn đồng bộ cho tất cả giáo viên — giáo viên không thấy tuỳ chọn đó.
+ * Trạng thái và đồng bộ Google Calendar.
  */
 export function KhoiGoogleCalendar({ laAdmin }: KhoiGoogleCalendarProps) {
   const { message } = App.useApp()
@@ -47,7 +36,6 @@ export function KhoiGoogleCalendar({ laAdmin }: KhoiGoogleCalendarProps) {
   const dongBo = useDongBoGoogle()
 
   const [dongBoTatCa, setDongBoTatCa] = useState(false)
-  /** Câu cảnh báo khi một lượt đồng bộ có lỗi — hiện bằng Alert, thay vì báo thành công chung chung. */
   const [loiDongBo, setLoiDongBo] = useState<string | null>(null)
 
   const duLieu = trangThai.data
@@ -56,15 +44,12 @@ export function KhoiGoogleCalendar({ laAdmin }: KhoiGoogleCalendarProps) {
 
   const dongBoNgay = async () => {
     setLoiDongBo(null)
-
-    // Cờ này chỉ admin đặt được; giáo viên gửi lên sẽ bị 403 nên giao diện cũng không hiện cho họ.
     const thamSo: ThamSoDongBo = laAdmin && dongBoTatCa ? { tatCaGiaoVien: true } : {}
 
     try {
       const ketQua = await dongBo.mutateAsync(thamSo)
 
       if (ketQua.loi) {
-        // Một người lỗi không làm hỏng cả lượt: phải nói rõ lỗi, KHÔNG báo thành công chung chung.
         const cau =
           laAdmin && dongBoTatCa
             ? `Một số giáo viên lỗi: ${ketQua.loi}`
@@ -75,7 +60,7 @@ export function KhoiGoogleCalendar({ laAdmin }: KhoiGoogleCalendarProps) {
         return
       }
 
-      message.success(`${tomTatDongBo(ketQua)} — đồng bộ từ hôm nay tới hết tháng sau`)
+      message.success(`${tomTatDongBo(ketQua)} — hoàn tất đồng bộ`)
     } catch (error) {
       message.error(noiDungLoi(error, 'Không đồng bộ được lên Google Calendar'))
     }
@@ -154,10 +139,10 @@ export function KhoiGoogleCalendar({ laAdmin }: KhoiGoogleCalendarProps) {
       <Flex vertical gap={12}>
         {duLieu.cheDoGia ? (
           <Alert
-            type="warning"
+            type="info"
             showIcon
-            message="Đang ở CHẾ ĐỘ GIẢ (chỉ máy dev)"
-            description="Backend không gọi Google thật: sự kiện chỉ được ghi vào bộ nhớ để thử luồng. Đừng tin số liệu đồng bộ khi đang ở chế độ này."
+            message="Chế độ giả lập máy chủ"
+            description="Đang chạy ở chế độ mô phỏng lịch trên máy dev."
           />
         ) : null}
 
@@ -165,19 +150,8 @@ export function KhoiGoogleCalendar({ laAdmin }: KhoiGoogleCalendarProps) {
           <Alert
             type="warning"
             showIcon
-            message="Bạn chưa kết nối Google Calendar"
-            description={
-              <Space direction="vertical" size={4}>
-                <Typography.Text>
-                  Buổi học của ai thì nằm trên lịch Google của người đó. Bạn tự kết nối lịch của mình —
-                  không ai, kể cả admin, kết nối hộ hay xem được token của bạn.
-                </Typography.Text>
-                <Typography.Text type="secondary">
-                  Các buổi học vẫn nằm đầy đủ trong hệ thống và vẫn điểm danh bình thường — chỉ chưa có sự
-                  kiện nào trên Google Calendar.
-                </Typography.Text>
-              </Space>
-            }
+            message="Chưa kết nối Google Calendar"
+            description="Kết nối tài khoản Google trong phần Cài đặt để lịch dạy được tự động cập nhật lên Google Calendar của bạn."
             action={
               <Button
                 size="small"
@@ -191,11 +165,13 @@ export function KhoiGoogleCalendar({ laAdmin }: KhoiGoogleCalendarProps) {
           />
         ) : (
           <Descriptions size="small" column={1} bordered>
-            <Descriptions.Item label="Tài khoản Google bạn đã liên kết">
-              {duLieu.taiKhoan ?? 'Đã liên kết (backend không trả email)'}
+            <Descriptions.Item label="Tài khoản liên kết">
+              {duLieu.taiKhoan ?? 'Đã liên kết'}
             </Descriptions.Item>
-            <Descriptions.Item label="Lịch đích đang ghi">{duLieu.calendarId ?? 'Chưa chọn lịch'}</Descriptions.Item>
-            <Descriptions.Item label="Lần đồng bộ gần nhất">
+            <Descriptions.Item label="Lịch đích">
+              {duLieu.calendarId ?? 'Lịch mặc định'}
+            </Descriptions.Item>
+            <Descriptions.Item label="Đồng bộ gần nhất">
               {lanCuoi ? (
                 <Space direction="vertical" size={2}>
                   <Typography.Text>{tomTatDongBo(lanCuoi)}</Typography.Text>
@@ -204,7 +180,7 @@ export function KhoiGoogleCalendar({ laAdmin }: KhoiGoogleCalendarProps) {
                   </Typography.Text>
                   {lanCuoi.loi ? (
                     <Typography.Text type="danger" style={{ fontSize: 12 }}>
-                      Lỗi gần nhất: {lanCuoi.loi}
+                      Lỗi: {lanCuoi.loi}
                     </Typography.Text>
                   ) : null}
                 </Space>
@@ -222,7 +198,7 @@ export function KhoiGoogleCalendar({ laAdmin }: KhoiGoogleCalendarProps) {
               setDongBoTatCa(suKien.target.checked)
             }}
           >
-            Đồng bộ cho tất cả giáo viên (mọi người lên lịch của chính họ)
+            Đồng bộ cho tất cả giáo viên
           </Checkbox>
         ) : null}
 
@@ -235,22 +211,8 @@ export function KhoiGoogleCalendar({ laAdmin }: KhoiGoogleCalendarProps) {
               setLoiDongBo(null)
             }}
             message={loiDongBo}
-            description="Các giáo viên còn lại vẫn được đồng bộ bình thường; người lỗi cần kiểm tra kết nối Google của chính họ."
           />
         ) : null}
-
-        <Alert
-          type="info"
-          showIcon
-          message="Đồng bộ MỘT CHIỀU: hệ thống → Google Calendar"
-          description="Sửa hay xoá sự kiện ngay trên Google Calendar sẽ KHÔNG quay về hệ thống. Phần nhận thay đổi từ Google (webhook hai chiều) chưa làm, nên muốn đổi lịch thì sửa trong hệ thống rồi bấm Đồng bộ ngay."
-        />
-
-        <Typography.Text type="secondary" style={{ fontSize: 12 }}>
-          Mỗi buổi học là một sự kiện riêng (không phải sự kiện lặp hằng tuần), nên nghỉ một buổi hay đổi giờ
-          một buổi chỉ ảnh hưởng đúng buổi đó. Buổi đang ở trạng thái <Tag color="warning">Nghỉ</Tag> không được
-          đẩy lên Google; nếu trước đó đã đẩy thì sự kiện bị gỡ.
-        </Typography.Text>
       </Flex>
     </Card>
   )

@@ -19,7 +19,7 @@ import { CheckCircleOutlined, LockOutlined, UnlockOutlined } from '@ant-design/i
 import { useChotSoHocPhi, useMoChotSoHocPhi, useXemTruocChotSo } from '../../api/tuition'
 import { formatVnd } from '../../lib/money'
 import { moTaKy } from './hienThi'
-import { LoiApiAlert } from './LoiApiAlert'
+import { LoiApiAlert } from '../../components/LoiApiAlert'
 
 interface ChotSoCardProps {
   thang: number
@@ -31,11 +31,7 @@ interface GiaTriMoChotSo {
 }
 
 /**
- * Chốt sổ / mở chốt sổ — chỉ admin.
- *
- * Chốt sổ là KHOÁ con số của kỳ: lần "tính học phí" sau bỏ qua các dòng đã chốt, nên chốt trên con số
- * thiếu là tự lừa mình. Vì vậy phải xem trước: còn buổi chưa điểm danh thì người dùng phải tự tích
- * "tôi hiểu" rồi mới gửi `boQuaCanhBao: true` — giao diện không bật hộ.
+ * Chốt sổ và mở chốt sổ kỳ học phí.
  */
 export function ChotSoCard({ thang, nam }: ChotSoCardProps) {
   const { message } = App.useApp()
@@ -49,9 +45,6 @@ export function ChotSoCard({ thang, nam }: ChotSoCardProps) {
   const xemTruoc = useXemTruocChotSo({ thang, nam }, dangXem)
   const chotSo = useChotSoHocPhi()
   const moChot = useMoChotSoHocPhi()
-
-  // Đổi kỳ thì màn hình gắn `key` mới cho component này, nên trạng thái (đang xem trước, đã tích, lỗi)
-  // tự về mặc định — không cần effect dọn tay sau mỗi lần đổi tháng/năm.
 
   const canhBao = xemTruoc.data
   const coCanhBao = canhBao?.coCanhBao ?? false
@@ -91,18 +84,11 @@ export function ChotSoCard({ thang, nam }: ChotSoCardProps) {
       title="Chốt sổ kỳ"
       extra={
         <Typography.Text type="secondary" style={{ fontSize: 12 }}>
-          Chỉ admin
+          Chỉ dành cho Admin
         </Typography.Text>
       }
     >
       <Flex vertical gap={12}>
-        <Alert
-          type="info"
-          showIcon
-          message="Chốt sổ khoá con số của kỳ lại"
-          description="Sau khi chốt, lần “Tính học phí kỳ này” bỏ qua các dòng đã chốt nên sổ giữ đúng con số đã chốt. Mở lại là việc của admin và bắt buộc nêu lý do (số liệu trước khi mở được lưu vào nhật ký)."
-        />
-
         <Space wrap>
           <Button
             type="primary"
@@ -143,7 +129,7 @@ export function ChotSoCard({ thang, nam }: ChotSoCardProps) {
             <Flex vertical gap={12}>
               <Descriptions size="small" column={2} bordered>
                 <Descriptions.Item label="Kỳ">{moTaKy(canhBao.thang, canhBao.nam)}</Descriptions.Item>
-                <Descriptions.Item label="Số dòng học phí">{canhBao.soDongHocPhi}</Descriptions.Item>
+                <Descriptions.Item label="Số học sinh">{canhBao.soDongHocPhi}</Descriptions.Item>
                 <Descriptions.Item label="Tổng phải thu">
                   {formatVnd(canhBao.tongPhaiThu)}
                 </Descriptions.Item>
@@ -153,7 +139,7 @@ export function ChotSoCard({ thang, nam }: ChotSoCardProps) {
                     {formatVnd(canhBao.tongConLai)}
                   </Typography.Text>
                 </Descriptions.Item>
-                <Descriptions.Item label="Học sinh chưa được tính tiền">
+                <Descriptions.Item label="Chưa tính tiền">
                   {canhBao.soHocSinhChuaTinhTien}
                 </Descriptions.Item>
               </Descriptions>
@@ -162,31 +148,19 @@ export function ChotSoCard({ thang, nam }: ChotSoCardProps) {
                 <Alert
                   type="warning"
                   showIcon
-                  message="Kỳ này còn việc chưa xong — chốt lúc này là chốt trên con số thiếu"
+                  message="Còn buổi học chưa điểm danh trong kỳ"
                   description={
                     <Flex vertical gap={8}>
                       {canhBao.chuaDiemDanh.length > 0 ? (
-                        <Flex vertical gap={4}>
-                          <Typography.Text>
-                            Còn {canhBao.chuaDiemDanh.length} học sinh có buổi chưa điểm danh (buổi đã
-                            qua ngày hôm nay):
-                          </Typography.Text>
-                          <List
-                            size="small"
-                            dataSource={canhBao.chuaDiemDanh}
-                            renderItem={(muc) => (
-                              <List.Item>
-                                {muc.tenHocSinh} — {muc.soBuoiChuaDiemDanh} buổi
-                              </List.Item>
-                            )}
-                          />
-                        </Flex>
-                      ) : null}
-                      {canhBao.soHocSinhChuaTinhTien > 0 ? (
-                        <Typography.Text>
-                          Và {canhBao.soHocSinhChuaTinhTien} học sinh có buổi trong kỳ nhưng chưa được
-                          tính tiền — bấm “Tính học phí kỳ này” trước cho đủ dòng.
-                        </Typography.Text>
+                        <List
+                          size="small"
+                          dataSource={canhBao.chuaDiemDanh}
+                          renderItem={(muc) => (
+                            <List.Item>
+                              {muc.tenHocSinh} — {muc.soBuoiChuaDiemDanh} buổi chưa điểm danh
+                            </List.Item>
+                          )}
+                        />
                       ) : null}
                     </Flex>
                   }
@@ -195,8 +169,7 @@ export function ChotSoCard({ thang, nam }: ChotSoCardProps) {
                 <Alert
                   type="success"
                   showIcon
-                  message="Kỳ này đã điểm danh đủ và mọi học sinh có buổi đều đã được tính tiền"
-                  description="Chốt được ngay. Con số dưới đây sẽ là con số của sổ."
+                  message="Kỳ này đã điểm danh đầy đủ và sẵn sàng chốt sổ"
                 />
               )}
 
@@ -207,7 +180,7 @@ export function ChotSoCard({ thang, nam }: ChotSoCardProps) {
                     datDaTich(suKien.target.checked)
                   }}
                 >
-                  Tôi hiểu và vẫn chốt (bỏ qua cảnh báo chưa điểm danh — việc này được ghi vào nhật ký)
+                  Tôi hiểu và vẫn muốn chốt sổ
                 </Checkbox>
               ) : null}
 
@@ -225,11 +198,6 @@ export function ChotSoCard({ thang, nam }: ChotSoCardProps) {
                 >
                   Chốt sổ {moTaKy(thang, nam)}
                 </Button>
-                <Typography.Text type="secondary" style={{ fontSize: 12 }}>
-                  {canhBao.soDongHocPhi === 0
-                    ? 'Kỳ này chưa có dòng học phí nào — chốt sẽ báo lỗi, hãy tính học phí trước.'
-                    : 'Sau khi chốt, muốn tính lại phải mở chốt sổ trước.'}
-                </Typography.Text>
               </Space>
             </Flex>
           )
@@ -240,7 +208,7 @@ export function ChotSoCard({ thang, nam }: ChotSoCardProps) {
         open={moMoChotSo}
         title={`Mở chốt sổ ${moTaKy(thang, nam)}`}
         footer={null}
-        width={520}
+        width={480}
         onCancel={() => {
           form.resetFields()
           datLoiMoChotSo(null)
@@ -248,13 +216,6 @@ export function ChotSoCard({ thang, nam }: ChotSoCardProps) {
         }}
       >
         <Flex vertical gap={12}>
-          <Alert
-            type="warning"
-            showIcon
-            message="Mở chốt sổ là mở khoá con số đã chốt của cả kỳ"
-            description="Số liệu của kỳ trước khi mở được lưu vào nhật ký kèm lý do này, và lần tính học phí sau sẽ ghi đè con số đã chốt."
-          />
-
           {loiMoChotSo ? <LoiApiAlert error={loiMoChotSo} tieuDe="Không mở được chốt sổ" /> : null}
 
           <Form<GiaTriMoChotSo>
@@ -272,7 +233,7 @@ export function ChotSoCard({ thang, nam }: ChotSoCardProps) {
                 {
                   validator(_: unknown, giaTri: string | undefined) {
                     if (!giaTri || giaTri.trim().length === 0) {
-                      return Promise.reject(new Error('Phải ghi lý do mở lại sổ đã chốt'))
+                      return Promise.reject(new Error('Vui lòng nhập lý do mở lại sổ'))
                     }
                     return Promise.resolve()
                   },
@@ -282,8 +243,7 @@ export function ChotSoCard({ thang, nam }: ChotSoCardProps) {
               <Input.TextArea
                 rows={3}
                 maxLength={500}
-                showCount
-                placeholder="Ví dụ: chưa điểm danh buổi 28/09 nên học phí thiếu, cần tính lại"
+                placeholder="Nhập lý do mở lại sổ đã chốt"
               />
             </Form.Item>
 
@@ -294,7 +254,7 @@ export function ChotSoCard({ thang, nam }: ChotSoCardProps) {
                   datMoMoChotSo(false)
                 }}
               >
-                Để sau
+                Huỷ
               </Button>
               <Button type="primary" htmlType="submit" loading={moChot.isPending}>
                 Mở chốt sổ

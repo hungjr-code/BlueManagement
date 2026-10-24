@@ -224,7 +224,26 @@ def main() -> int:
 
     print("== 2. Email Google lạ thì TỰ TẠO tài khoản giáo viên (không phải admin) ==")
     email_la = "nguoi.moi.bang.google@vidu.vn"
-    doc_so_sql("DELETE FROM \"GiaoVien\" WHERE \"Email\" = '" + email_la + "'; SELECT 'CM=0';")
+    # Xoá tài khoản Google lạ còn lại của lần chạy trước, theo ĐÚNG thứ tự khoá ngoại: nhật ký và dữ
+    # liệu của chính tài khoản đó trước, GiaoVien sau cùng. Xoá GiaoVien trước sẽ bị chặn bởi
+    # FK_NhatKy_GiaoVien_NguoiThucHienId — và một lần chạy dở dang để lại đúng trạng thái đó, nên
+    # database MỚI (lần chạy đầu bị lỗi ở bước nào đó) sẽ hỏng ở đây nếu không xoá theo thứ tự.
+    doc_so_sql(
+        "DELETE FROM \"DiemDanh\" WHERE \"BuoiHocId\" IN (SELECT b.\"Id\" FROM \"BuoiHoc\" b "
+        f"JOIN \"GiaoVien\" g ON g.\"Id\" = b.\"GiaoVienId\" WHERE g.\"Email\" = '{email_la}'); "
+        "DELETE FROM \"BuoiHoc\" WHERE \"GiaoVienId\" IN (SELECT \"Id\" FROM \"GiaoVien\" "
+        f"WHERE \"Email\" = '{email_la}'); "
+        "DELETE FROM \"HocPhi\" WHERE \"GiaoVienId\" IN (SELECT \"Id\" FROM \"GiaoVien\" "
+        f"WHERE \"Email\" = '{email_la}'); "
+        "DELETE FROM \"HocSinh\" WHERE \"GiaoVienId\" IN (SELECT \"Id\" FROM \"GiaoVien\" "
+        f"WHERE \"Email\" = '{email_la}'); "
+        "DELETE FROM \"DiemDanh\" WHERE \"NguoiDiemDanhId\" IN (SELECT \"Id\" FROM \"GiaoVien\" "
+        f"WHERE \"Email\" = '{email_la}'); "
+        "DELETE FROM \"PhieuThu\" WHERE \"NguoiThuId\" IN (SELECT \"Id\" FROM \"GiaoVien\" "
+        f"WHERE \"Email\" = '{email_la}'); "
+        "DELETE FROM \"NhatKy\" WHERE \"NguoiThucHienId\" IN (SELECT \"Id\" FROM \"GiaoVien\" "
+        f"WHERE \"Email\" = '{email_la}'); "
+        f"DELETE FROM \"GiaoVien\" WHERE \"Email\" = '{email_la}'; SELECT 'CM=0';")
     ma1, _, ma2, vi_tri2, cookie_la = dang_nhap_bang_google(email_la)
     kiem_tra(ma2 == 302 and COOKIE_PHIEN in cookie_la and "dang-nhap-thanh-cong" in vi_tri2,
              "email Google chưa có tài khoản thì tạo mới rồi vào luôn")
@@ -269,6 +288,21 @@ def main() -> int:
 
     print("== 6. A đồng bộ: chỉ buổi của A, chỉ lên lịch của A ==")
     goi("/api/google-calendar/gia-xoa-dau-vet", method="POST")
+
+    # Buổi học được SINH THEO YÊU CẦU khi đọc lịch/điểm danh — dữ liệu mẫu ở máy dev cố tình chỉ
+    # tạo học sinh kèm lịch tuần, không sinh buổi (xem DbSeeder). Trên một database MỚI, giáo viên A
+    # vì thế không có buổi nào, và bước kiểm nội dung sự kiện sẽ không có gì để kiểm. Đọc một lần cho
+    # đúng khoảng sắp đồng bộ, đúng như khi giáo viên mở màn Lịch dạy trước khi bấm Đồng bộ.
+    ma, _ = goi(f"/api/attendance?tuNgay={hom_nay}&denNgay={den_ky}", token=token_a)
+    kiem_tra(ma == 200, f"sinh buổi học cho A trong khoảng sắp đồng bộ -> HTTP {ma}")
+
+    # Bước 7 kiểm "nhắc trước lấy từ Cài đặt", nên phải TỰ ĐẶT giá trị đó ở đây: mặc định của một
+    # database mới là 30 phút, còn 45 phút là do phase1 đặt — chạy phase3 một mình trên database mới
+    # sẽ đỏ oan nếu phụ thuộc vào thứ tự chạy.
+    ma, cai_dat = goi("/api/settings", method="PUT", token=token_admin, body={"nhacTruocBaoLauPhut": 45})
+    kiem_tra(ma == 200 and cai_dat["nhacTruocBaoLauPhut"] == 45,
+             f"đặt nhắc trước 45 phút cho lượt kiểm này -> HTTP {ma}")
+
     ma, kq_a = goi("/api/google-calendar/dong-bo", method="POST", token=token_a, body={})
     kiem_tra(ma == 200, f"A đồng bộ -> HTTP {ma}")
     so_buoi_a = dem_buoi_can_dong_bo(EMAIL_GV_MAU, hom_nay, den_ky)

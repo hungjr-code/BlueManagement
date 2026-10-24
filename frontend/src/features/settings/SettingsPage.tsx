@@ -47,11 +47,7 @@ interface GiaTriCauHinh {
 }
 
 /**
- * Cài đặt của trung tâm, chia làm hai phần rõ ràng:
- *
- * - **Tài khoản nhận tiền là của từng giáo viên** — ai cũng tự khai tài khoản của mình, không ai
- *   khai hộ ai. Admin chỉ thấy số lượng đã khai / chưa khai, không đọc được số tài khoản.
- * - **Cấu hình chung** (mẫu nội dung chuyển khoản, múi giờ, nhắc lịch) do admin sửa, giáo viên chỉ đọc.
+ * Cài đặt hệ thống và tài khoản nhận tiền.
  */
 export function SettingsPage() {
   const [formTaiKhoan] = Form.useForm<GiaTriTaiKhoan>()
@@ -91,8 +87,8 @@ export function SettingsPage() {
       void caiDat.refetch()
       message.success(
         ketQua.daCauHinh
-          ? 'Đã lưu tài khoản nhận tiền của bạn'
-          : 'Đã gỡ tài khoản nhận tiền của bạn',
+          ? 'Đã lưu tài khoản nhận tiền thành công'
+          : 'Đã gỡ thông tin tài khoản nhận tiền',
       )
     } catch (error) {
       const loiApi = error instanceof ApiError ? error : null
@@ -125,39 +121,22 @@ export function SettingsPage() {
     <>
       <PageHeader
         title="Cài đặt"
-        description="Tài khoản nhận tiền của bạn (mỗi giáo viên tự khai), cấu hình chung của trung tâm, và kết nối Google Calendar — xem trạng thái thật, chọn lịch đích, đồng bộ ngay, ngắt kết nối (chỉ admin làm được, giáo viên chỉ xem)."
+        description="Cấu hình hệ thống và tài khoản nhận tiền."
       />
       <Flex vertical gap={16}>
-        <Alert
-          type="warning"
-          showIcon
-          message="Không nhập Client Secret hay mật khẩu ngân hàng trên giao diện web"
-          description="Google Client Secret chỉ nằm ở biến môi trường phía backend. Trang này cũng không có ô nhập mật khẩu Google hay mật khẩu internet banking — chỉ cần số tài khoản để sinh mã QR nhận tiền."
-        />
-
         <Card
           size="small"
           title="Tài khoản nhận tiền của tôi"
           extra={
             daCauHinhTaiKhoan(taiKhoan) ? (
-              <Typography.Text type="secondary">
-                Đang dùng: {tenNganHang(taiKhoan?.nganHangBin)} — {taiKhoan?.soTaiKhoan}
-              </Typography.Text>
+              <Tag color="blue">
+                {tenNganHang(taiKhoan?.nganHangBin)} — {taiKhoan?.soTaiKhoan}
+              </Tag>
             ) : (
-              <Typography.Text type="danger">Chưa khai</Typography.Text>
+              <Tag color="default">Chưa thiết lập</Tag>
             )
           }
         >
-          {!daCauHinhTaiKhoan(taiKhoan) ? (
-            <Alert
-              type="info"
-              showIcon
-              style={{ marginBottom: 16 }}
-              message="Khai tài khoản để thu học phí bằng mã QR"
-              description="Mã QR ở trang Học phí dùng tài khoản của giáo viên dạy học sinh đó. Bạn chưa khai thì chưa sinh được mã QR cho học sinh của mình."
-            />
-          ) : null}
-
           {loiTaiKhoan ? (
             <Alert type="error" showIcon message={loiTaiKhoan} closable style={{ marginBottom: 16 }} />
           ) : null}
@@ -202,7 +181,7 @@ export function SettingsPage() {
             </Form.Item>
 
             <Form.Item label="Chủ tài khoản" name="chuTaiKhoan">
-              <Input placeholder="Tên không dấu, ví dụ NGUYEN VAN A" allowClear />
+              <Input placeholder="Tên in hoa không dấu, ví dụ NGUYEN VAN A" allowClear />
             </Form.Item>
 
             <Space wrap>
@@ -212,7 +191,7 @@ export function SettingsPage() {
                 icon={<SaveOutlined />}
                 loading={dangLuuTaiKhoan}
               >
-                Lưu tài khoản của tôi
+                Lưu tài khoản
               </Button>
               <Button
                 icon={<QrcodeOutlined />}
@@ -232,34 +211,28 @@ export function SettingsPage() {
                 onChange={(value) => {
                   setSoTienThu(value ?? 0)
                 }}
-                style={{ width: 240 }}
+                style={{ width: 220 }}
               />
             </Space>
           </Form>
-
-          <Typography.Paragraph type="secondary" style={{ marginTop: 16, marginBottom: 0 }}>
-            Lưu bằng <Typography.Text code>PUT /api/teachers/me/tai-khoan-nhan-tien</Typography.Text>.
-            Số tài khoản chỉ đi kèm phiên đăng nhập của bạn: giáo viên khác và admin đều không đọc được.
-            Xoá cả ngân hàng lẫn số tài khoản rồi lưu là gỡ tài khoản đã khai.
-          </Typography.Paragraph>
         </Card>
 
         {laAdmin ? (
           <Card
             size="small"
-            title="Giáo viên đã khai tài khoản nhận tiền"
+            title="Tình trạng tài khoản giáo viên"
             extra={
               <Tag color={soChuaKhai === 0 ? 'success' : 'warning'}>
-                {soDaKhai ?? 0}/{tongGiaoVien ?? 0} giáo viên
+                {soDaKhai ?? 0}/{tongGiaoVien ?? 0} giáo viên đã khai
               </Tag>
             }
           >
             <Flex vertical gap={12}>
               {caiDat.isPending ? (
-                <Typography.Text type="secondary">Đang đọc số liệu…</Typography.Text>
+                <Typography.Text type="secondary">Đang tải dữ liệu…</Typography.Text>
               ) : (
                 <Space size="large" wrap>
-                  <Statistic title="Đã khai" value={soDaKhai ?? 0} />
+                  <Statistic title="Đã khai tài khoản" value={soDaKhai ?? 0} />
                   <Statistic title="Chưa khai" value={soChuaKhai ?? 0} />
                 </Space>
               )}
@@ -268,7 +241,7 @@ export function SettingsPage() {
                 <Alert
                   type="warning"
                   showIcon
-                  message={`${tenChuaKhai.length} giáo viên chưa khai tài khoản nhận tiền`}
+                  message={`${tenChuaKhai.length} giáo viên chưa cập nhật tài khoản nhận tiền`}
                   description={
                     <List
                       size="small"
@@ -277,18 +250,7 @@ export function SettingsPage() {
                     />
                   }
                 />
-              ) : (
-                <Alert
-                  type="success"
-                  showIcon
-                  message="Mọi giáo viên đang làm đều đã khai tài khoản nhận tiền"
-                />
-              )}
-
-              <Typography.Text type="secondary" style={{ fontSize: 12 }}>
-                Màn hình này chỉ đếm. Số tài khoản của từng giáo viên là việc riêng của người đó —
-                muốn đổi thì chính họ khai lại ở Cài đặt, admin không sửa hộ được.
-              </Typography.Text>
+              ) : null}
             </Flex>
           </Card>
         ) : null}
@@ -299,7 +261,7 @@ export function SettingsPage() {
           <Alert
             type="error"
             showIcon
-            message="Không đọc được cấu hình chung từ backend"
+            message="Không đọc được cấu hình chung"
             description={caiDat.error instanceof Error ? caiDat.error.message : 'Lỗi không xác định'}
             action={
               <Button
@@ -320,20 +282,10 @@ export function SettingsPage() {
           title={
             <Space>
               Cấu hình chung của trung tâm
-              {laAdmin ? <Tag color="gold">admin sửa được</Tag> : <Tag>chỉ đọc</Tag>}
+              {laAdmin ? <Tag color="blue">Quản trị viên</Tag> : <Tag>Chỉ xem</Tag>}
             </Space>
           }
         >
-          {!laAdmin ? (
-            <Alert
-              type="info"
-              showIcon
-              style={{ marginBottom: 16 }}
-              message="Chỉ admin sửa được cấu hình chung"
-              description="Bạn xem được cấu hình đang dùng, nhưng muốn đổi thì nhờ chủ trung tâm."
-            />
-          ) : null}
-
           <Form<GiaTriCauHinh>
             form={formCauHinh}
             layout="vertical"
@@ -358,17 +310,17 @@ export function SettingsPage() {
             <Form.Item
               label="Mẫu nội dung chuyển khoản"
               name="mauNoiDungChuyenKhoan"
-              extra="Dùng {tenHocSinh} cho tên học sinh và {thang} cho kỳ học phí. Để trống thì dùng dạng mặc định."
+              extra="Gợi ý: {tenHocSinh} cho tên học sinh và {thang} cho kỳ học phí."
             >
               <Input placeholder="{tenHocSinh} - Hoc phi {thang}" allowClear />
             </Form.Item>
 
             <Form.Item
-              label="Nhắc trước buổi học (phút)"
+              label="Nhắc trước buổi học"
               name="nhacTruocBaoLauPhut"
               rules={[{ required: true, message: 'Nhập số phút nhắc trước' }]}
             >
-              <InputNumber min={0} max={1440} style={{ width: 200 }} addonAfter="phút" />
+              <InputNumber min={0} max={1440} style={{ width: 180 }} addonAfter="phút" />
             </Form.Item>
 
             <Form.Item
@@ -376,42 +328,39 @@ export function SettingsPage() {
               name="nguongCanhBaoSoHocSinh"
               rules={[{ required: true, message: 'Nhập ngưỡng cảnh báo' }]}
             >
-              <InputNumber min={1} max={200} style={{ width: 200 }} addonAfter="học sinh" />
+              <InputNumber min={1} max={200} style={{ width: 180 }} addonAfter="học sinh" />
             </Form.Item>
 
-            <Form.Item label="Giờ tổng hợp 'hôm nay dạy ai'" name="gioGuiThongBaoHomNay">
+            <Form.Item label="Giờ gửi thông báo lịch dạy hôm nay" name="gioGuiThongBaoHomNay">
               <TimePicker format="HH:mm" minuteStep={5} style={{ width: 160 }} needConfirm={false} />
             </Form.Item>
 
             <Form.Item
-              label="Bật khối thông báo lịch dạy hôm nay"
+              label="Bật thông báo lịch dạy hôm nay"
               name="batThongBaoHomNay"
               valuePropName="checked"
             >
               <Switch />
             </Form.Item>
 
-            <Button
-              type="primary"
-              htmlType="submit"
-              icon={<SaveOutlined />}
-              loading={capNhat.isPending}
-              disabled={!laAdmin}
-            >
-              Lưu cấu hình chung
-            </Button>
+            {laAdmin ? (
+              <Button
+                type="primary"
+                htmlType="submit"
+                icon={<SaveOutlined />}
+                loading={capNhat.isPending}
+              >
+                Lưu cấu hình
+              </Button>
+            ) : null}
           </Form>
 
-          <Typography.Text type="secondary" style={{ fontSize: 12 }}>
-            Ba giá trị dưới đây backend trả về, không sửa được từ màn hình này.
-          </Typography.Text>
-
-          <Descriptions size="small" column={1} bordered style={{ marginTop: 8, maxWidth: 520 }}>
-            <Descriptions.Item label="Múi giờ của trung tâm">{duLieu?.muiGio ?? '—'}</Descriptions.Item>
-            <Descriptions.Item label="Định dạng hiển thị">
+          <Descriptions size="small" column={1} bordered style={{ marginTop: 16, maxWidth: 520 }}>
+            <Descriptions.Item label="Múi giờ">{duLieu?.muiGio ?? '—'}</Descriptions.Item>
+            <Descriptions.Item label="Định dạng">
               {duLieu ? `${duLieu.kyTuTienTe} · ${duLieu.dinhDangNgay}` : '—'}
             </Descriptions.Item>
-            <Descriptions.Item label="Vai trò mặc định khi tạo người dùng mới">
+            <Descriptions.Item label="Vai trò mặc định">
               {duLieu?.vaiTroMacDinh ?? '—'}
             </Descriptions.Item>
           </Descriptions>

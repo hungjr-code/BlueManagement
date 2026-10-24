@@ -6,10 +6,9 @@ import type { HocPhi } from '../../api/tuition'
 import { ngayNgan } from '../../config/lichTuan'
 import { formatVnd } from '../../lib/money'
 import { mauTrangThaiThanhToan, moTaHanDong, moTaKy, nhanTrangThaiThanhToan } from './hienThi'
-import { LoiApiAlert } from './LoiApiAlert'
+import { LoiApiAlert } from '../../components/LoiApiAlert'
 
 interface SapDenHanCardProps {
-  /** Bấm vào một dòng thì mở ngăn kéo chi tiết của dòng đó. */
   onMoDong: (dong: HocPhi) => void
 }
 
@@ -19,17 +18,14 @@ interface DongCanhBao {
 }
 
 const SO_NGAY: ReadonlyArray<{ value: number; label: string }> = [
-  { value: 3, label: 'Trong 3 ngày tới' },
-  { value: 7, label: 'Trong 7 ngày tới' },
-  { value: 14, label: 'Trong 14 ngày tới' },
-  { value: 30, label: 'Trong 30 ngày tới' },
+  { value: 3, label: '3 ngày tới' },
+  { value: 7, label: '7 ngày tới' },
+  { value: 14, label: '14 ngày tới' },
+  { value: 30, label: '30 ngày tới' },
 ]
 
 /**
- * Khối "ai sắp đến hạn đóng tiền / ai đã quá hạn mà chưa thu đủ".
- *
- * Hai nhóm này không phụ thuộc kỳ đang chọn vì công nợ là chuyện của mọi kỳ: học sinh nợ tháng 8 vẫn
- * phải hiện khi đang xem tháng 9. Quá hạn xếp trước vì đó là việc phải làm ngay.
+ * Khối sắp đến hạn và quá hạn học phí.
  */
 export function SapDenHanCard({ onMoDong }: SapDenHanCardProps) {
   const [soNgay, datSoNgay] = useState(7)
@@ -68,7 +64,7 @@ export function SapDenHanCard({ onMoDong }: SapDenHanCardProps) {
     {
       title: 'Tình trạng',
       key: 'tinhTrang',
-      width: 170,
+      width: 150,
       render: (_giaTri, muc) =>
         muc.quaHan ? (
           <Tag color="red">{moTaHanDong(muc.dong.hanDongTien)}</Tag>
@@ -102,13 +98,13 @@ export function SapDenHanCard({ onMoDong }: SapDenHanCardProps) {
   return (
     <Card
       size="small"
-      title="Sắp đến hạn / quá hạn"
+      title="Sắp đến hạn &amp; quá hạn"
       extra={
         <Space wrap>
-          <Tag color="gold">{sapToi.length} sắp đến hạn</Tag>
-          <Tag color={quaHan.length > 0 ? 'red' : 'default'}>{quaHan.length} quá hạn</Tag>
+          {sapToi.length > 0 ? <Tag color="gold">{sapToi.length} sắp đến hạn</Tag> : null}
+          {quaHan.length > 0 ? <Tag color="red">{quaHan.length} quá hạn</Tag> : null}
           <Typography.Text type="secondary" style={{ fontSize: 12 }}>
-            Tổng còn lại của các dòng còn nợ: {formatVnd(duLieu?.tongConLai ?? 0)}
+            Tổng nợ: {formatVnd(duLieu?.tongConLai ?? 0)}
           </Typography.Text>
         </Space>
       }
@@ -145,10 +141,7 @@ export function SapDenHanCard({ onMoDong }: SapDenHanCardProps) {
               <Alert
                 type="error"
                 showIcon
-                message={`${quaHan.length} dòng đã QUÁ HẠN mà chưa thu đủ`}
-                description={`Tổng còn lại của các dòng còn nợ (mọi kỳ): ${formatVnd(
-                  duLieu?.tongConLai ?? 0,
-                )}. Nhắc phụ huynh trước khi dạy thêm buổi mới.`}
+                message={`${quaHan.length} học sinh quá hạn thanh toán (${formatVnd(duLieu?.tongConLai ?? 0)})`}
               />
             ) : null}
 
@@ -156,8 +149,7 @@ export function SapDenHanCard({ onMoDong }: SapDenHanCardProps) {
               <Alert
                 type="warning"
                 showIcon
-                message={`${sapToi.length} dòng sắp đến hạn trong ${soNgay} ngày tới`}
-                description={`Tổng còn lại của các dòng còn nợ (mọi kỳ): ${formatVnd(duLieu?.tongConLai ?? 0)}.`}
+                message={`${sapToi.length} học sinh sắp đến hạn trong ${soNgay} ngày tới`}
               />
             ) : null}
 
@@ -165,8 +157,7 @@ export function SapDenHanCard({ onMoDong }: SapDenHanCardProps) {
               <Alert
                 type="success"
                 showIcon
-                message={`Không có ai quá hạn hay đến hạn trong ${soNgay} ngày tới`}
-                description="Mọi dòng học phí đã thu đủ, hoặc chưa tới hạn đóng."
+                message={`Không có khoản học phí nào quá hạn hoặc sắp đến hạn trong ${soNgay} ngày tới`}
               />
             ) : (
               <Table<DongCanhBao>
@@ -189,13 +180,6 @@ export function SapDenHanCard({ onMoDong }: SapDenHanCardProps) {
                 }}
               />
             )}
-
-            {dongCanhBao.length > 0 ? (
-              <Typography.Text type="secondary" style={{ fontSize: 12 }}>
-                Bấm vào một dòng để xem chi tiết và thu tiền. Số ngày còn lại tính theo ngày đóng tiền đã
-                khai của học sinh, không phải ngày phát sinh buổi học.
-              </Typography.Text>
-            ) : null}
           </Flex>
         )}
       </Flex>

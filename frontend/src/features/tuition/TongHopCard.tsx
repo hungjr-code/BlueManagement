@@ -4,7 +4,7 @@ import { useTongHopTheoGiaoVien } from '../../api/tuition'
 import type { TongHopTheoGiaoVien } from '../../api/tuition'
 import { formatVnd } from '../../lib/money'
 import { moTaKy } from './hienThi'
-import { LoiApiAlert } from './LoiApiAlert'
+import { LoiApiAlert } from '../../components/LoiApiAlert'
 
 interface TongHopCardProps {
   thang: number
@@ -61,11 +61,6 @@ export function TongHopCard({ thang, nam }: TongHopCardProps) {
     <Card
       size="small"
       title={`Tổng hợp theo giáo viên — ${moTaKy(thang, nam)}`}
-      extra={
-        <Typography.Text type="secondary" style={{ fontSize: 12 }}>
-          Chỉ admin
-        </Typography.Text>
-      }
     >
       <Flex vertical gap={12}>
         {tongHop.isError ? (
@@ -90,7 +85,7 @@ export function TongHopCard({ thang, nam }: TongHopCardProps) {
               emptyText: (
                 <Empty
                   image={Empty.PRESENTED_IMAGE_SIMPLE}
-                  description="Kỳ này chưa có dòng học phí nào — bấm “Tính học phí kỳ này” ở khối trên"
+                  description="Chưa có dữ liệu học phí kỳ này"
                 />
               ),
             }}

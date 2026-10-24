@@ -14,6 +14,7 @@ import {
   Skeleton,
   Space,
   Table,
+  Tag,
   Typography,
 } from 'antd'
 import type { TableProps } from 'antd'
@@ -35,7 +36,6 @@ import {
   banNhapCua,
   laThayDoi,
   thanhItemLuu,
-  thoiDiemDiaPhuong,
 } from './trangThaiDiemDanh'
 import type { BanNhapDiemDanh } from './trangThaiDiemDanh'
 
@@ -59,15 +59,7 @@ const cotTongHop: TableProps<TongHopDiemDanh>['columns'] = [
 ]
 
 /**
- * Điểm danh bằng ô lịch: mỗi buổi là một thẻ, bấm vào thẻ để đánh dấu rồi lưu cả khoảng một lần.
- *
- * Hai điều màn hình này không được phá:
- *
- * 1. **Bỏ trống không phải là nghỉ.** Buổi chưa đánh dấu khác hẳn buổi nghỉ — gộp hai thứ làm một là
- *    học phí tính sai. Vì vậy mọi thay đổi đều do người dùng bấm, và chấm trạng thái trên thẻ luôn
- *    phân biệt được ba thứ.
- * 2. **Sửa lại buổi đã điểm danh thì backend ghi nhật ký.** Thẻ có dấu “đã sửa” và hộp thoại nói
- *    trước lần lưu này sẽ vào nhật ký.
+ * Điểm danh buổi học theo ô lịch.
  */
 export function AttendancePage() {
   const { modal, message } = App.useApp()
@@ -84,7 +76,6 @@ export function AttendancePage() {
   const buoiHoc = useBuoiHoc({
     tuNgay: khoang.tuNgay,
     denNgay: khoang.denNgay,
-    // Giáo viên đã bị backend giới hạn theo chính họ; chỉ admin mới lọc được người khác.
     ...(laAdmin && giaoVienId ? { giaoVienId } : {}),
   })
   const luuDiemDanh = useLuuDiemDanh()
@@ -93,7 +84,6 @@ export function AttendancePage() {
   const duLieu = buoiHoc.data?.duLieu ?? []
   const loiTai = buoiHoc.error instanceof ApiError ? buoiHoc.error : null
 
-  /** Những buổi đã sửa trong state nhưng chưa gửi lên backend. */
   const dsThayDoi = duLieu
     .map((buoi) => ({ buoi, nhap: banNhapCua(buoi, dangSua) }))
     .filter(({ buoi, nhap }) => laThayDoi(buoi, nhap))
@@ -106,8 +96,6 @@ export function AttendancePage() {
     else theoNgay.set(buoi.ngay, [buoi])
   }
 
-  /* ------------------------------ sửa trong state ------------------------------ */
-
   const suaBuoi = (buoi: BuoiHoc, sua: Partial<BanNhapDiemDanh>) => {
     setDangSua((truoc) => ({ ...truoc, [buoi.id]: { ...banNhapCua(buoi, truoc), ...sua } }))
   }
@@ -116,17 +104,15 @@ export function AttendancePage() {
     const hienTai = banNhapCua(buoi, dangSua)
     suaBuoi(buoi, {
       trangThai,
-      // Chọn Nghỉ thì mặc định "có phép" cho nhanh; nghỉ không phép bấm lại lựa chọn bên cạnh.
       lyDoNghi: trangThai === 'nghi' ? (hienTai.lyDoNghi ?? 'co_phep') : null,
     })
   }
 
-  /** Đánh dấu nhanh cả khoảng: chỉ những buổi còn trống, để người dùng sửa lại chỗ cá biệt. */
   const danhDauCaKhoang = () => {
     const conTrong = duLieu.filter((buoi) => banNhapCua(buoi, dangSua).trangThai === 'chua_diem_danh')
 
     if (conTrong.length === 0) {
-      message.info('Mọi buổi trong khoảng này đều đã có trạng thái — chỉ còn việc sửa các trường hợp cá biệt.')
+      message.info('Tất cả buổi học trong khoảng này đã được đánh dấu.')
       return
     }
 
@@ -138,10 +124,8 @@ export function AttendancePage() {
       return moi
     })
 
-    message.info(`Đã đánh dấu ${conTrong.length} buổi là đi học. Xem lại rồi bấm Lưu điểm danh.`)
+    message.info(`Đã đánh dấu ${conTrong.length} buổi là đi học. Bấm "Lưu điểm danh" để cập nhật.`)
   }
-
-  /* ------------------------------ lưu và đổi khoảng ------------------------------ */
 
   const luuKhoang = async () => {
     if (dsThayDoi.length === 0) return
@@ -151,11 +135,7 @@ export function AttendancePage() {
         dsThayDoi.map(({ buoi, nhap }) => thanhItemLuu(buoi.id, nhap)),
       )
       setDangSua({})
-      message.success(
-        ketQua.soBuoiGhiNhatKy > 0
-          ? `Đã lưu ${ketQua.soBuoiDaLuu} buổi, ghi ${ketQua.soBuoiGhiNhatKy} dòng nhật ký sửa điểm danh`
-          : `Đã lưu ${ketQua.soBuoiDaLuu} buổi, không có dòng nào phải ghi nhật ký`,
-      )
+      message.success(`Đã lưu ${ketQua.soBuoiDaLuu} buổi học thành công`)
     } catch (error) {
       const loiApi = error instanceof ApiError ? error : null
       const theoField = loiApi?.fieldMessages ?? []
@@ -163,10 +143,6 @@ export function AttendancePage() {
     }
   }
 
-  /**
-   * Đổi khoảng xem hoặc đổi giáo viên. Còn thay đổi chưa lưu thì hỏi trước: các thay đổi đó thuộc
-   * khoảng cũ nên chuyển đi là mất.
-   */
   const doiKhoangXem = (chay: () => void) => {
     const apDung = () => {
       setDangSua({})
@@ -179,11 +155,11 @@ export function AttendancePage() {
     }
 
     modal.confirm({
-      title: 'Còn thay đổi chưa lưu',
-      content: `${soThayDoi} buổi đã sửa nhưng chưa bấm Lưu điểm danh. Đổi khoảng xem sẽ bỏ các thay đổi đó.`,
+      title: 'Có thay đổi chưa lưu',
+      content: `${soThayDoi} buổi đã sửa nhưng chưa bấm Lưu điểm danh. Chuyển trang sẽ huỷ các thay đổi này.`,
       okText: 'Bỏ thay đổi và chuyển',
       okButtonProps: { danger: true },
-      cancelText: 'Ở lại để lưu',
+      cancelText: 'Ở lại',
       onOk: apDung,
     })
   }
@@ -209,16 +185,12 @@ export function AttendancePage() {
     })
   }
 
-  /** Thêm buổi dạy bù xong: đóng hộp thoại, cần thì mở đúng khoảng chứa buổi đó. */
   const daThemDayBu = (ngay: string) => {
     setMoThemDayBu(false)
-
     if (ngay >= khoang.tuNgay && ngay <= khoang.denNgay) return
 
     if (soThayDoi > 0) {
-      message.info(
-        `Buổi dạy bù ngày ${ngay} không nằm trong khoảng đang xem. Còn ${soThayDoi} thay đổi chưa lưu nên chưa chuyển — lưu xong hãy mở khoảng đó.`,
-      )
+      message.info(`Buổi dạy bù ngày ${ngay} đã thêm ngoài khoảng đang xem. Hãy lưu điểm danh trước khi chuyển.`)
       return
     }
 
@@ -231,7 +203,7 @@ export function AttendancePage() {
     <>
       <PageHeader
         title="Điểm danh"
-        description={`${khoang.moTa} · ${duLieu.length} buổi · bấm vào thẻ để đánh dấu, sửa xong bấm Lưu một lần`}
+        description={`${khoang.moTa} · ${duLieu.length} buổi`}
         extra={
           <Space size={8} wrap>
             <Segmented<CheDoXem>
@@ -269,8 +241,8 @@ export function AttendancePage() {
                 allowClear
                 showSearch
                 optionFilterProp="label"
-                placeholder="Mọi giáo viên"
-                style={{ width: 200 }}
+                placeholder="Tất cả giáo viên"
+                style={{ width: 190 }}
                 value={giaoVienId}
                 loading={danhSachGiaoVien.isPending}
                 options={(danhSachGiaoVien.data?.duLieu ?? []).map((giaoVien) => ({
@@ -300,7 +272,7 @@ export function AttendancePage() {
           message="Không đọc được buổi học"
           description={
             loiTai.isNetworkError
-              ? 'Không kết nối được backend. Kiểm tra API đã chạy ở cổng 5080 chưa rồi thử lại.'
+              ? 'Không kết nối được backend. Kiểm tra API đang chạy rồi thử lại.'
               : loiTai.message
           }
           action={
@@ -317,29 +289,29 @@ export function AttendancePage() {
         />
       ) : null}
 
-      <Flex align="center" gap={16} wrap style={{ marginBottom: 10 }}>
+      <Flex align="center" gap={16} wrap style={{ marginBottom: 14 }}>
         <Space size={6}>
           <span className="cham chua_diem_danh" />
           <Typography.Text type="secondary" style={{ fontSize: 12 }}>
-            chưa điểm danh
+            Chưa điểm danh
           </Typography.Text>
         </Space>
         <Space size={6}>
           <span className="cham di_hoc" />
           <Typography.Text type="secondary" style={{ fontSize: 12 }}>
-            đi học
+            Đi học
           </Typography.Text>
         </Space>
         <Space size={6}>
           <span className="cham nghi" />
           <Typography.Text type="secondary" style={{ fontSize: 12 }}>
-            nghỉ
+            Nghỉ
           </Typography.Text>
         </Space>
         <Space size={6}>
           <span className="cham-sua" />
           <Typography.Text type="secondary" style={{ fontSize: 12 }}>
-            sửa chưa lưu
+            Chưa lưu
           </Typography.Text>
         </Space>
       </Flex>
@@ -349,12 +321,7 @@ export function AttendancePage() {
       ) : !loiTai && duLieu.length === 0 ? (
         <Empty
           image={Empty.PRESENTED_IMAGE_SIMPLE}
-          description={
-            <Typography.Text type="secondary">
-              {khoang.moTa} chưa có buổi học nào để điểm danh. Buổi học được sinh từ lịch học lặp hằng
-              tuần của học sinh đang học.
-            </Typography.Text>
-          }
+          description="Không có buổi học nào trong khoảng thời gian này"
         >
           <Button
             type="primary"
@@ -383,10 +350,10 @@ export function AttendancePage() {
                   trigger="click"
                   placement="right"
                   title={
-                    <Flex vertical>
-                      <span>
-                        {gioNgan(buoi.gioBatDau)}–{gioNgan(buoi.gioKetThuc)}
-                        {buoi.laBuoiDayBu ? ' · dạy bù' : ''}
+                    <Flex vertical gap={2}>
+                      <span style={{ fontWeight: 600 }}>
+                        {gioNgan(buoi.gioBatDau)} – {gioNgan(buoi.gioKetThuc)}
+                        {buoi.laBuoiDayBu ? ' · Dạy bù' : ''}
                       </span>
                       <Typography.Text type="secondary" style={{ fontWeight: 'normal', fontSize: 12 }}>
                         {buoi.tenHocSinh}
@@ -426,7 +393,7 @@ export function AttendancePage() {
                         size="small"
                         rows={2}
                         maxLength={1000}
-                        placeholder="Ghi chú (không bắt buộc)"
+                        placeholder="Ghi chú (tuỳ chọn)"
                         value={nhap.ghiChu}
                         onChange={(suKien) => {
                           suaBuoi(buoi, { ghiChu: suKien.target.value })
@@ -434,13 +401,15 @@ export function AttendancePage() {
                       />
 
                       <Flex justify="space-between" align="center" gap={8}>
-                        <Typography.Text type="secondary" style={{ fontSize: 12 }}>
-                          {nhap.trangThai === 'chua_diem_danh'
-                            ? 'chưa điểm danh — khác với nghỉ'
-                            : nhap.trangThai === 'di_hoc'
-                              ? 'đi học → tính tiền'
-                              : `nghỉ ${nhap.lyDoNghi === 'khong_phep' ? 'không phép' : 'có phép'} → không tính tiền`}
-                        </Typography.Text>
+                        {nhap.trangThai === 'chua_diem_danh' ? (
+                          <Tag>Chưa điểm danh</Tag>
+                        ) : nhap.trangThai === 'di_hoc' ? (
+                          <Tag color="green">Đi học</Tag>
+                        ) : (
+                          <Tag color="red">
+                            Nghỉ {nhap.lyDoNghi === 'khong_phep' ? 'không phép' : 'có phép'}
+                          </Tag>
+                        )}
                         {nhap.trangThai !== 'chua_diem_danh' ? (
                           <Button
                             type="link"
@@ -450,18 +419,14 @@ export function AttendancePage() {
                               suaTrangThai(buoi, 'chua_diem_danh')
                             }}
                           >
-                            Bỏ đánh dấu
+                            Bỏ chọn
                           </Button>
                         ) : null}
                       </Flex>
 
                       {buoi.trangThai !== 'chua_diem_danh' && daSua ? (
-                        <Typography.Text type="warning" style={{ fontSize: 12 }}>
-                          Buổi này đã điểm danh trước đó — lưu sẽ ghi một dòng nhật ký sửa đổi
-                          {buoi.nguoiDiemDanh
-                            ? ` (${buoi.nguoiDiemDanh}, ${thoiDiemDiaPhuong(buoi.thoiDiemDiemDanhUtc)})`
-                            : ''}
-                          .
+                        <Typography.Text type="warning" style={{ fontSize: 11 }}>
+                          Sửa đổi sẽ được ghi nhận vào nhật ký
                         </Typography.Text>
                       ) : null}
                     </Flex>
@@ -485,8 +450,8 @@ export function AttendancePage() {
       {!buoiHoc.isPending && !loiTai && duLieu.length > 0 ? (
         <div className="thanh-luu">
           <Flex align="center" gap={12} wrap justify="space-between">
-            <Typography.Text type={soThayDoi > 0 ? undefined : 'secondary'}>
-              {soThayDoi > 0 ? `${soThayDoi} buổi sửa chưa lưu` : 'Không có thay đổi nào chưa lưu'}
+            <Typography.Text type={soThayDoi > 0 ? undefined : 'secondary'} strong={soThayDoi > 0}>
+              {soThayDoi > 0 ? `${soThayDoi} buổi đã sửa chưa lưu` : 'Không có thay đổi nào chưa lưu'}
             </Typography.Text>
 
             <Space size={8} wrap>
@@ -537,6 +502,7 @@ export function AttendancePage() {
                       pagination={false}
                       columns={cotTongHop}
                       dataSource={buoiHoc.data?.tongHopTheoHocSinh ?? []}
+                      style={{ marginTop: 8 }}
                     />
                   </div>
                   {laAdmin ? (
@@ -548,6 +514,7 @@ export function AttendancePage() {
                         pagination={false}
                         columns={cotTongHop}
                         dataSource={buoiHoc.data?.tongHopTheoGiaoVien ?? []}
+                        style={{ marginTop: 8 }}
                       />
                     </div>
                   ) : null}

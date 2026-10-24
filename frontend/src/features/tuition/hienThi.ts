@@ -164,30 +164,9 @@ export function moTaHanDong(hanDongTien: string): string {
 
 /* --------------------------------- Lỗi API --------------------------------- */
 
-/**
- * Một dòng mô tả lỗi để hiện cho người dùng: lỗi theo từng field trước (backend nói rõ sai ở đâu),
- * rồi mới tới message chung.
- */
-export function moTaLoi(error: unknown, macDinh: string): string {
-  if (error instanceof ApiError) {
-    if (error.fieldMessages.length > 0) return error.fieldMessages.join(' · ')
-    return error.message
-  }
-  return macDinh
-}
-
-export interface LoiTheoField {
-  field: string
-  thongDiep: string
-}
-
-export function loiTheoField(error: unknown): LoiTheoField[] {
-  const problem = error instanceof ApiError ? error.problem : undefined
-  if (!problem?.errors) return []
-  return Object.entries(problem.errors).flatMap(([field, danhSach]) =>
-    danhSach.map((thongDiep) => ({ field, thongDiep })),
-  )
-}
+// Cách đọc lỗi API bê lên dùng chung (src/lib/loiApi.ts); re-export để màn hình Học phí khỏi
+// phải sửa đường dẫn import.
+export { loiTheoField, moTaLoi } from '../../lib/loiApi'
 
 /** Backend trả 409 khi chốt sổ mà còn buổi chưa điểm danh (và chưa xác nhận bỏ qua cảnh báo). */
 export function laLoiChotSoConCanhBao(error: unknown): boolean {
