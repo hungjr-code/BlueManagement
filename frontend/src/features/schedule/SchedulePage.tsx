@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import {
   Alert,
+  App,
   Button,
   Collapse,
   Drawer,
@@ -13,7 +14,14 @@ import {
   Tag,
   Typography,
 } from 'antd'
-import { LeftOutlined, ReloadOutlined, RightOutlined } from '@ant-design/icons'
+import {
+  CloudUploadOutlined,
+  DeleteOutlined,
+  DownloadOutlined,
+  LeftOutlined,
+  ReloadOutlined,
+  RightOutlined,
+} from '@ant-design/icons'
 import dayjs from 'dayjs'
 import { useNavigate } from 'react-router-dom'
 import { PageHeader } from '../../components/page'
@@ -29,6 +37,11 @@ import { usePhien } from '../../app/session'
 import { gioNgan, ngayNgan, tenThu, thuCua } from '../../config/lichTuan'
 import { KhoiGoogleCalendar } from './KhoiGoogleCalendar'
 import { nhanTrangThaiBuoi, thoiDiemDiaPhuong } from './hienThiLich'
+import { useDongBoTuDong } from './dongBoTuDong'
+import { GuiTaiLieuModal } from '../taiLieu/GuiTaiLieuModal'
+import { useDanhSachTaiLieu, useThuHoiTaiLieu, duongDanTaiVe } from '../../api/taiLieu'
+import { http } from '../../api/http'
+import { luuTepVe } from '../../lib/taiTep'
 
 /**
  * Lịch dạy dạng ô lịch: tuần hoặc tháng, mỗi ô một ngày.
@@ -42,6 +55,16 @@ export function SchedulePage() {
   const [mocNgay, datMocNgay] = useState(chuyenMoc('tuan', '', 0))
   const [giaoVienId, datGiaoVienId] = useState<string | undefined>(undefined)
   const [chiTiet, datChiTiet] = useState<BuoiHoc | null>(null)
+  const [moGuiTaiLieu, datMoGuiTaiLieu] = useState(false)
+  const [dangTaiTep, datDangTaiTep] = useState<string | null>(null)
+
+  const { message } = App.useApp()
+
+  // Tự kéo thay đổi từ Google về khi mở màn (nếu giáo viên bật công tắc và đã quá 10 phút).
+  const dongBoTuDong = useDongBoTuDong()
+
+  const taiLieuCuaBuoi = useDanhSachTaiLieu({ buoiHocId: chiTiet?.id }, chiTiet !== null)
+  const thuHoiTaiLieu = useThuHoiTaiLieu()
 
   const khoang = tinhKhoangXem(cheDo, mocNgay)
   const buoiHoc = useBuoiHoc({
@@ -73,6 +96,7 @@ export function SchedulePage() {
         description={`${khoang.moTa} · ${duLieu.length} buổi`}
         extra={
           <Space size={8} wrap>
+            {dongBoTuDong.dangChay ? <Tag color="processing">Đang kéo thay đổi từ Google…</Tag> : null}
             <Segmented<CheDoXem>
               value={cheDo}
               onChange={doiCheDo}
@@ -216,6 +240,20 @@ export function SchedulePage() {
         </Flex>
       ) : null}
 
+      <GuiTaiLieuModal
+        open={moGuiTaiLieu}
+        onClose={() => {
+          datMoGuiTaiLieu(false)
+        }}
+        buoiHocId={chiTiet?.id ?? null}
+        hocSinhMacDinh={chiTiet ? { id: chiTiet.hocSinhId, ten: chiTiet.tenHocSinh } : null}
+        moTaBuoi={
+          chiTiet
+            ? `Buổi của ${chiTiet.tenHocSinh} ngày ${dayjs(chiTiet.ngay).format('DD/MM/YYYY')} lúc ${chiTiet.gioBatDau.slice(0, 5)}`
+            : null
+        }
+      />
+
       <Drawer
         open={chiTiet !== null}
         onClose={() => {
@@ -277,6 +315,101 @@ export function SchedulePage() {
                     Đồng bộ lúc {thoiDiemDiaPhuong(chiTiet.googleDongBoUtc)}
                   </Typography.Text>
                 ) : null}
+              </Flex>
+            </div>
+
+            {chiTiet.googleLechGanNhat ? (
+              <Alert
+                type="warning"
+                showIcon
+                message="Lệch với Google Calendar"
+                description={chiTiet.googleLechGanNhat}
+              />
+            ) : null}
+
+            {chiTiet.gioBatDauTheoLich ? (
+              <Alert
+                type="info"
+                showIcon
+                message={
+                  'Buổi này đã được dời từ ' +
+                  chiTiet.gioBatDauTheoLich.slice(0, 5) +
+                  ' theo Google Calendar'
+                }
+                description="Giờ hiện tại là giờ trên lịch Google của bạn. Sửa lại trong app nếu buổi học vẫn theo lịch cũ."
+              />
+            ) : null}
+
+            {chiTiet.googleDaHuy && chiTiet.trangThai !== 'nghi' ? (
+              <Alert
+                type="warning"
+                showIcon
+                message="Sự kiện đã bị huỷ trên Google Calendar"
+                description="Buổi học trong app vẫn đang tính bình thường. Sửa điểm danh thành nghỉ nếu buổi này không dạy nữa."
+              />
+            ) : null}
+
+            <div>
+              <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+                Tài liệu đã giao cho buổi này
+              </Typography.Text>
+              <Flex vertical gap={8} style={{ marginTop: 6 }}>
+                {(taiLieuCuaBuoi.data ?? []).length === 0 ? (
+                  <Typography.Text type="secondary">Chưa có tài liệu nào.</Typography.Text>
+                ) : (
+                  (taiLieuCuaBuoi.data ?? []).map((taiLieu) => (
+                    <Flex key={taiLieu.id} justify="space-between" align="center" gap={8}>
+                      <Flex vertical gap={2} style={{ minWidth: 0 }}>
+                        <Typography.Text ellipsis>{taiLieu.tieuDe}</Typography.Text>
+                        <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+                          {taiLieu.tenTep}
+                          {taiLieu.hanNop ? ' · hạn ' + taiLieu.hanNop.split('-').reverse().join('/') : ''}
+                        </Typography.Text>
+                      </Flex>
+                      <Space size={4}>
+                        <Button
+                          size="small"
+                          icon={<DownloadOutlined />}
+                          loading={dangTaiTep === taiLieu.id}
+                          onClick={() => {
+                            datDangTaiTep(taiLieu.id)
+                            void luuTepVe(http, duongDanTaiVe(taiLieu.id), taiLieu.tenTep)
+                              .catch(() => {
+                                message.error('Không tải được tài liệu')
+                              })
+                              .finally(() => {
+                                datDangTaiTep(null)
+                              })
+                          }}
+                        />
+                        <Button
+                          size="small"
+                          danger
+                          icon={<DeleteOutlined />}
+                          onClick={() => {
+                            void thuHoiTaiLieu
+                              .mutateAsync(taiLieu.id)
+                              .then(() => {
+                                message.success('Đã thu hồi tài liệu')
+                              })
+                              .catch(() => {
+                                message.error('Không thu hồi được tài liệu')
+                              })
+                          }}
+                        />
+                      </Space>
+                    </Flex>
+                  ))
+                )}
+
+                <Button
+                  icon={<CloudUploadOutlined />}
+                  onClick={() => {
+                    datMoGuiTaiLieu(true)
+                  }}
+                >
+                  Gửi tài liệu cho buổi này
+                </Button>
               </Flex>
             </div>
 

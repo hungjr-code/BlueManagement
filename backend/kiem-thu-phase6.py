@@ -128,9 +128,13 @@ def main() -> int:
     kiem_tra(ma == 201, f"giáo viên tạo học sinh -> HTTP {ma}")
 
     # Buổi dạy bù NGAY HÔM NAY: không phụ thuộc hôm nay là thứ mấy mới có buổi theo lịch lặp.
+    #
+    # Giờ phải KHÔNG đè khung giờ học hằng tuần ở trên (thứ hai 05:00–06:00): chạy đúng vào thứ hai
+    # thì buổi theo lịch đã có sẵn hôm nay, và buổi dạy bù đè lên nó bị API chặn 400 (trùng giờ dạy
+    # của cùng một giáo viên) — lỗi kịch bản, không phải lỗi API. Lấy buổi tối cho chắc.
     ma, buoi = goi("/api/attendance/buoi-day-bu", method="POST", token=token_gv, body={
         "hocSinhId": hoc_sinh["id"], "ngay": hom_nay.isoformat(),
-        "gioBatDau": "05:10:00", "gioKetThuc": "06:10:00", "ghiChu": "Buổi cho bài kiểm thử nhật ký"})
+        "gioBatDau": "19:00:00", "gioKetThuc": "20:00:00", "ghiChu": "Buổi cho bài kiểm thử nhật ký"})
     kiem_tra(ma == 201, f"thêm buổi để điểm danh -> HTTP {ma}")
     buoi_id = buoi["id"]
 

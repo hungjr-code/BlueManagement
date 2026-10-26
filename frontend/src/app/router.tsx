@@ -3,7 +3,7 @@
 // oxlint-disable react/only-export-components
 import { lazy, Suspense } from 'react'
 import type { ReactNode } from 'react'
-import { createBrowserRouter } from 'react-router-dom'
+import { createBrowserRouter, Outlet } from 'react-router-dom'
 import { Spin } from 'antd'
 import { AppLayout } from './AppLayout'
 import { RequireAuth } from './session'
@@ -58,6 +58,34 @@ const NhatKyPage = lazy(async () => {
   const module = await import('../features/nhatKy/NhatKyPage')
   return { default: module.NhatKyPage }
 })
+const TaiLieuPage = lazy(async () => {
+  const module = await import('../features/taiLieu/TaiLieuPage')
+  return { default: module.TaiLieuPage }
+})
+const HocSinhLoginPage = lazy(async () => {
+  const module = await import('../features/hocSinh/HocSinhLoginPage')
+  return { default: module.HocSinhLoginPage }
+})
+const HocSinhLayout = lazy(async () => {
+  const module = await import('../features/hocSinh/HocSinhLayout')
+  return { default: module.HocSinhLayout }
+})
+const HocSinhBaiTapPage = lazy(async () => {
+  const module = await import('../features/hocSinh/HocSinhBaiTapPage')
+  return { default: module.HocSinhBaiTapPage }
+})
+const HocSinhLichHocPage = lazy(async () => {
+  const module = await import('../features/hocSinh/HocSinhLichHocPage')
+  return { default: module.HocSinhLichHocPage }
+})
+const HocSinhSessionProvider = lazy(async () => {
+  const module = await import('../features/hocSinh/hocSinhSession')
+  return { default: module.HocSinhSessionProvider }
+})
+const RequireHocSinh = lazy(async () => {
+  const module = await import('../features/hocSinh/hocSinhSession')
+  return { default: module.RequireHocSinh }
+})
 
 function PageFallback() {
   return (
@@ -99,6 +127,36 @@ export const router = createBrowserRouter([
     element: lazyPage(<ResetPasswordPage />),
   },
   {
+    // Cổng của HỌC SINH: đăng nhập bằng mã học sinh, chỉ thấy bài tập và lịch học của chính mình.
+    // Nằm ngoài RequireAuth (phiên giáo viên) vì là một loại tài khoản hoàn toàn khác.
+    path: '/hoc-sinh',
+    element: (
+      <Suspense fallback={<PageFallback />}>
+        <HocSinhSessionProvider>
+          <Outlet />
+        </HocSinhSessionProvider>
+      </Suspense>
+    ),
+    children: [
+      {
+        path: 'dang-nhap',
+        element: lazyPage(<HocSinhLoginPage />),
+      },
+      {
+        element: (
+          <RequireHocSinh>
+            <HocSinhLayout />
+          </RequireHocSinh>
+        ),
+        children: [
+          { index: true, element: lazyPage(<HocSinhBaiTapPage />) },
+          { path: 'lich-hoc', element: lazyPage(<HocSinhLichHocPage />) },
+          { path: '*', element: <NotFoundPage /> },
+        ],
+      },
+    ],
+  },
+  {
     path: '/',
     element: (
       <RequireAuth>
@@ -114,6 +172,7 @@ export const router = createBrowserRouter([
       { path: 'attendance', element: lazyPage(<AttendancePage />) },
       { path: 'tuition', element: lazyPage(<TuitionPage />) },
       { path: 'teachers', element: lazyPage(<TeachersPage />) },
+      { path: 'tai-lieu', element: lazyPage(<TaiLieuPage />) },
       { path: 'nhat-ky', element: lazyPage(<NhatKyPage />) },
       { path: 'settings', element: lazyPage(<SettingsPage />) },
       { path: '*', element: <NotFoundPage /> },

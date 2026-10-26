@@ -55,6 +55,8 @@ interface GiaTriHocSinh {
   lop?: string | null
   ghiChu?: string | null
   trangThai: TrangThaiHocSinh
+  /** Mã đăng nhập của học sinh. Bỏ trống thì máy chủ tự sinh HS-0001, HS-0002… */
+  maHocSinh?: string | null
   lichHoc: KhungGioHinhThuc[]
 }
 
@@ -86,6 +88,7 @@ function giaTriTuHocSinh(hocSinh: HocSinh): GiaTriHocSinh {
     ghiChu: hocSinh.ghiChu,
     lop: hocSinh.lop,
     trangThai: hocSinh.trangThai,
+    maHocSinh: hocSinh.maHocSinh,
     lichHoc: hocSinh.lichHoc.map((khung) => ({
       thu: khung.thu,
       gioBatDau: dayjs(khung.gioBatDau, 'HH:mm:ss'),
@@ -134,6 +137,7 @@ function duLieuGui(giaTri: GiaTriHocSinh, laAdmin: boolean): TaoHocSinh {
     lop: giaTri.lop?.trim() || null,
     ghiChu: giaTri.ghiChu?.trim() || null,
     trangThai: giaTri.trangThai,
+    maHocSinh: giaTri.maHocSinh?.trim() || null,
   }
 
   if (laAdmin && giaTri.giaoVienId) {
@@ -311,6 +315,16 @@ export function FormHocSinh({
                 ]}
               >
                 <Input placeholder="Ví dụ: Nguyễn Văn A" allowClear autoComplete="off" />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item
+                label="Mã đăng nhập của học sinh"
+                name="maHocSinh"
+                extra="Học sinh dùng mã này để vào xem bài tập. Bỏ trống thì hệ thống tự sinh (HS-0001…)."
+                rules={[{ max: 20, message: 'Mã dài quá 20 ký tự' }]}
+              >
+                <Input placeholder="HS-0007" allowClear autoComplete="off" />
               </Form.Item>
             </Col>
             {laAdmin ? (

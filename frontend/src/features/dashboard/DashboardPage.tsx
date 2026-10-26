@@ -26,6 +26,10 @@ import { BoLocGiaoVien } from './BoLocGiaoVien'
 import { LichDayTuan } from './LichDayTuan'
 import { BangTongHop } from './BangTongHop'
 import { taoCotBuoiHoc } from './cotBuoiHoc'
+import { useDongBoTuDong } from '../schedule/dongBoTuDong'
+import { BieuDoTiLeChuyenCan } from '../../components/charts/BieuDoTiLeChuyenCan'
+import { BieuDoChuyenCanTheoNgay } from '../../components/charts/BieuDoChuyenCanTheoNgay'
+import { TomTatThuNhapGiaoVien } from '../teachers/TomTatThuNhapGiaoVien'
 
 function moTaLoi(error: unknown): string {
   return error instanceof Error ? error.message : 'Lỗi không xác định'
@@ -35,6 +39,10 @@ function moTaLoi(error: unknown): string {
  * Tổng quan: hôm nay dạy ai, tuần này dạy những ai.
  */
 export function DashboardPage() {
+  // Mở Tổng quan cũng là một lần "vào app": tự kéo thay đổi từ Google về y như mở màn Lịch dạy
+  // (máy chủ tự bỏ qua nếu lần trước chưa quá 10 phút, nên hai màn mở liên tiếp không gọi hai lần).
+  useDongBoTuDong()
+
   const dieuHuong = useNavigate()
   const { nguoiDung } = usePhien()
   const laAdmin = nguoiDung?.vaiTro === 'admin'
@@ -60,6 +68,13 @@ export function DashboardPage() {
       Thử lại
     </Button>
   )
+
+  const giaoVienXemThuNhapId = giaoVienLoc ? giaoVienLoc.id : !laAdmin && nguoiDung ? nguoiDung.id : null
+  const tenGiaoVienXemThuNhap = giaoVienLoc
+    ? giaoVienLoc.hoTen
+    : !laAdmin && nguoiDung
+      ? nguoiDung.hoTen
+      : ''
 
   return (
     <>
@@ -223,9 +238,43 @@ export function DashboardPage() {
           </Row>
         )}
 
+        {giaoVienXemThuNhapId ? (
+          <TomTatThuNhapGiaoVien
+            giaoVienId={giaoVienXemThuNhapId}
+            tenGiaoVien={tenGiaoVienXemThuNhap}
+            laToi={!laAdmin && !giaoVienLoc}
+            hienBangHocSinh={false}
+            compact
+          />
+        ) : null}
+
         {!dangTai && !coLoi && tuanNay.data ? (
           <>
             <LichDayTuan tuan={tuanNay.data} tenGiaoVienLoc={giaoVienLoc?.hoTen} />
+
+            {/* Biểu đồ phân tích điểm danh & chuyên cần */}
+            <Row gutter={[16, 16]}>
+              <Col xs={24} lg={12}>
+                <BieuDoTiLeChuyenCan
+                  soBuoi={tuanNay.data.soBuoi}
+                  soDiHoc={tuanNay.data.soDiHoc}
+                  soNghiCoPhep={tuanNay.data.soNghiCoPhep}
+                  soNghiKhongPhep={tuanNay.data.soNghiKhongPhep}
+                  soChuaDiemDanh={tuanNay.data.soChuaDiemDanh}
+                  title="Tỷ lệ chuyên cần tuần này"
+                  subTitle={`Tuần ${ngayNgan(tuanNay.data.tuNgay)} – ${ngayNgan(tuanNay.data.denNgay)}`}
+                />
+              </Col>
+              <Col xs={24} lg={12}>
+                <BieuDoChuyenCanTheoNgay
+                  buoiHoc={tuanNay.data.duLieu}
+                  tuNgay={tuanNay.data.tuNgay}
+                  denNgay={tuanNay.data.denNgay}
+                  title="Phân bổ điểm danh theo ngày"
+                  subTitle="Số lượng buổi đi học và nghỉ trong tuần"
+                />
+              </Col>
+            </Row>
 
             <Row gutter={[16, 16]}>
               <Col xs={24} xl={laAdmin ? 12 : 24}>

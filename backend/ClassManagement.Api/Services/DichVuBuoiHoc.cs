@@ -48,10 +48,18 @@ public class DichVuBuoiHoc(AppDbContext db, ILogger<DichVuBuoiHoc> ghiLog)
 
         var daCo = await db.BuoiHoc
             .Where(x => x.HocSinhId == hocSinh.Id && x.Ngay >= batDau && x.Ngay <= denNgay)
-            .Select(x => new { x.Ngay, x.GioBatDau })
+            .Select(x => new { x.Ngay, x.GioBatDau, x.GioBatDauTheoLich })
             .ToListAsync(huyBo);
 
         var khoaDaCo = daCo.Select(x => (x.Ngay, x.GioBatDau)).ToHashSet();
+
+        // Buổi đã bị dời giờ (giáo viên sửa trên Google Calendar rồi app cập nhật theo) vẫn chiếm
+        // khung giờ GỐC của lịch tuần: tính cả khung đó vào đây, không thì mỗi lần đọc lịch lại sinh
+        // thêm một buổi ở giờ cũ, thành hai buổi cho cùng một ngày.
+        foreach (var buoi in daCo.Where(x => x.GioBatDauTheoLich is not null))
+        {
+            khoaDaCo.Add((buoi.Ngay, buoi.GioBatDauTheoLich!.Value));
+        }
         var bayGio = DateTime.UtcNow;
         var buoiMoi = new List<BuoiHoc>();
 

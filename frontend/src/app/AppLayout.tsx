@@ -6,6 +6,7 @@ import {
   AppstoreOutlined,
   CalendarOutlined,
   CheckSquareOutlined,
+  FileTextOutlined,
   HistoryOutlined,
   IdcardOutlined,
   KeyOutlined,
@@ -32,17 +33,19 @@ interface NavItem {
   chiAdmin?: boolean
 }
 
-const navItems: NavItem[] = [
-  { key: '/', label: 'Tổng quan', icon: <AppstoreOutlined /> },
-  { key: '/schedule', label: 'Lịch dạy', icon: <CalendarOutlined /> },
-  { key: '/students', label: 'Học sinh', icon: <UserOutlined /> },
-  { key: '/attendance', label: 'Điểm danh', icon: <CheckSquareOutlined /> },
-  { key: '/tuition', label: 'Học phí', icon: <WalletOutlined /> },
-  // Quản lý tài khoản là việc của chủ trung tâm.
-  { key: '/teachers', label: 'Giáo viên', icon: <IdcardOutlined />, chiAdmin: true },
-  { key: '/nhat-ky', label: 'Nhật ký', icon: <HistoryOutlined /> },
-  { key: '/settings', label: 'Cài đặt', icon: <SettingOutlined /> },
-]
+function taoNavItems(laAdmin: boolean): NavItem[] {
+  return [
+    { key: '/', label: 'Tổng quan', icon: <AppstoreOutlined /> },
+    { key: '/schedule', label: 'Lịch dạy', icon: <CalendarOutlined /> },
+    { key: '/students', label: 'Học sinh', icon: <UserOutlined /> },
+    { key: '/attendance', label: 'Điểm danh', icon: <CheckSquareOutlined /> },
+    { key: '/tuition', label: 'Học phí', icon: <WalletOutlined /> },
+  { key: '/tai-lieu', label: 'Tài liệu', icon: <FileTextOutlined /> },
+    { key: '/teachers', label: laAdmin ? 'Giáo viên' : 'Hồ sơ & Thu nhập', icon: <IdcardOutlined /> },
+    { key: '/nhat-ky', label: 'Nhật ký', icon: <HistoryOutlined /> },
+    { key: '/settings', label: 'Cài đặt', icon: <SettingOutlined /> },
+  ]
+}
 
 const tenVaiTro: Record<string, string> = {
   admin: 'Chủ trung tâm',
@@ -72,7 +75,7 @@ export function AppLayout() {
   const { nguoiDung, dangXuat } = usePhien()
 
   const laAdmin = nguoiDung?.vaiTro === 'admin'
-  const itemsHienThi = navItems.filter((item) => !item.chiAdmin || laAdmin)
+  const itemsHienThi = taoNavItems(laAdmin)
 
   const selectedKey = resolveSelectedKey(location.pathname, itemsHienThi)
   const pageTitle = itemsHienThi.find((item) => item.key === selectedKey)?.label ?? 'Không tìm thấy trang'

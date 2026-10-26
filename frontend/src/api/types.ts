@@ -106,6 +106,11 @@ export interface HocSinh {
   lop: string | null
   ghiChu: string | null
   trangThai: TrangThaiHocSinh
+  /** Mã đăng nhập của học sinh (HS-0007). */
+  maHocSinh: string | null
+  /** Đã cấp mật khẩu để em đăng nhập chưa. */
+  coTaiKhoan: boolean
+  lanDangNhapCuoiNgay: string | null
   lichHoc: KhungGioHoc[]
   ngayCapNhatUtc: string
 }
@@ -131,6 +136,8 @@ export interface TaoHocSinh {
   lop?: string | null
   ghiChu?: string | null
   trangThai?: TrangThaiHocSinh
+  /** Mã đăng nhập cho học sinh; bỏ trống thì máy chủ tự sinh HS-0001, HS-0002… */
+  maHocSinh?: string | null
   /** Gửi lại với true khi người dùng đã xác nhận trùng tên (lần đầu backend trả 409). */
   boQuaCanhBaoTrungTen?: boolean
 }
@@ -173,6 +180,17 @@ export interface BuoiHoc {
   /** Buổi này đã có sự kiện tương ứng trên Google Calendar chưa. */
   daDongBoGoogle: boolean
   googleDongBoUtc: string | null
+  /** Sự kiện của buổi đã bị huỷ/xoá trên Google Calendar (giáo viên tự huỷ trên lịch của mình). */
+  googleDaHuy: boolean
+  /**
+   * Chỗ lệch giữa Google và app mà hệ thống KHÔNG tự sửa (buổi đã điểm danh nên không tự đánh dấu
+   * nghỉ, hoặc sự kiện bị dời sang ngày khác). Hiện lên để giáo viên quyết định.
+   */
+  googleLechGanNhat: string | null
+  /** Số tài liệu đã giao cho buổi này. */
+  soTaiLieu: number
+  /** Khung giờ theo lịch hằng tuần, chỉ có khi buổi đã bị dời sang giờ khác trên Google Calendar. */
+  gioBatDauTheoLich: string | null
 }
 
 export interface TongHopDiemDanh {
@@ -274,6 +292,31 @@ export interface TrangThaiGoogle {
   /** Quyền backend sẽ xin — hiện trước khi người dùng bấm kết nối. */
   quyen: string[]
   lanDongBoCuoi: KetQuaDongBo | null
+  /** Lần cuối KÉO thay đổi từ Google về app (chiều ngược lại với lanDongBoCuoi). */
+  lanDongBoVeCuoi: KetQuaDongBoVe | null
+  /** Bật thì mở màn Lịch dạy là tự kéo thay đổi từ Google về (cách nhau ít nhất 10 phút). */
+  tuDongDongBo: boolean
+  /** Token đang lưu đã có quyền ghi tài liệu lên Drive chưa; false = phải kết nối lại Google. */
+  coQuyenDrive: boolean
+}
+
+/** Kết quả một lần KÉO thay đổi từ Google Calendar về app. */
+export interface KetQuaDongBoVe {
+  /** true = không gọi Google lần này vì lần trước vừa đồng bộ xong. */
+  boQua: boolean
+  lyDoBoQua: string | null
+  /** Số buổi đã đối chiếu với Google. */
+  soDaXet: number
+  /** Số buổi được cập nhật lại giờ theo Google. */
+  soDoiGio: number
+  /** Số buổi được đánh dấu nghỉ vì sự kiện đã bị huỷ trên Google. */
+  soDanhDauNghi: number
+  /** Số trường hợp lệch mà hệ thống không tự sửa — cần giáo viên xem. */
+  soCanhBao: number
+  soBoQua: number
+  thoiDiemUtc: string
+  thoiDiemDongBoCuoi: string | null
+  loi: string | null
 }
 
 export interface DuongDanUyQuyen {

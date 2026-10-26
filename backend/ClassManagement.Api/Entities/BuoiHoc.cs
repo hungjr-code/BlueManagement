@@ -43,7 +43,37 @@ public class BuoiHoc
     /// <summary>Lần cuối buổi này được ghi lên Google — dùng để biết khi nào cần cập nhật lại.</summary>
     public DateTime? GoogleDongBoUtc { get; set; }
 
+    /// <summary>
+    /// Lần cuối buổi này được ĐỌC LẠI từ Google về (chiều Google → app). Có nó thì thay đổi đã xử lý
+    /// không bị xét lại lần sau, và cũng biết được buổi nào chưa từng được đối chiếu.
+    /// </summary>
+    public DateTime? GoogleDongBoVeUtc { get; set; }
+
+    /// <summary>
+    /// Khung giờ GỐC theo lịch học hằng tuần, chỉ đặt khi giáo viên dời buổi này sang giờ khác NGAY
+    /// TRÊN Google Calendar rồi app cập nhật theo.
+    ///
+    /// Có nó thì bộ sinh buổi biết "khung giờ này đã có buổi rồi, chỉ là đã bị dời" — nếu không, lần
+    /// đọc lịch kế tiếp sẽ thấy thiếu buổi ở khung giờ cũ và sinh thêm một buổi nữa, thành hai buổi
+    /// cho cùng một ngày.
+    /// </summary>
+    public TimeOnly? GioBatDauTheoLich { get; set; }
+
+    /// <summary>
+    /// Sự kiện của buổi này đã bị huỷ/xoá trên Google Calendar (giáo viên tự huỷ trên lịch của mình).
+    /// Không tự động suy ra học phí — chỉ là sự thật để giao diện báo cho giáo viên xử lý.
+    /// </summary>
+    public bool GoogleDaHuy { get; set; }
+
+    /// <summary>
+    /// Lệch giữa Google và app mà hệ thống CỐ TÌNH không tự sửa (ví dụ buổi đã điểm danh nên không
+    /// tự đánh dấu nghỉ). Giao diện hiện lên để giáo viên quyết định.
+    /// </summary>
+    public string? GoogleLechGanNhat { get; set; }
+
     public DiemDanh? DiemDanh { get; set; }
+
+    public ICollection<TaiLieu> DanhSachTaiLieu { get; set; } = [];
 }
 
 /// <summary>

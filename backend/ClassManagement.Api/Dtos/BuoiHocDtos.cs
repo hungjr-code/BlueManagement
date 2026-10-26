@@ -50,6 +50,26 @@ public class BuoiHocDto
 
     /// <summary>Lần cuối buổi này được ghi lên Google.</summary>
     public DateTime? GoogleDongBoUtc { get; set; }
+
+    /// <summary>
+    /// Sự kiện của buổi này đã bị huỷ/xoá trên Google Calendar (giáo viên tự huỷ trên lịch của mình).
+    /// </summary>
+    public bool GoogleDaHuy { get; set; }
+
+    /// <summary>
+    /// Chỗ lệch giữa Google và app mà hệ thống KHÔNG tự sửa (ví dụ buổi đã điểm danh nên không tự
+    /// đánh dấu nghỉ, hoặc sự kiện bị dời sang ngày khác). Giao diện phải hiện lên cho giáo viên.
+    /// </summary>
+    public string? GoogleLechGanNhat { get; set; }
+
+    /// <summary>Số tài liệu đã giao cho buổi này (để nút Tài liệu hiện số ngay trên ô lịch).</summary>
+    public int SoTaiLieu { get; set; }
+
+    /// <summary>
+    /// Khung giờ theo lịch học hằng tuần, chỉ có khi buổi này đã bị dời sang giờ khác trên Google
+    /// Calendar. Giao diện hiện "dời từ 18:00" để giáo viên biết vì sao buổi khác lịch thường ngày.
+    /// </summary>
+    public TimeOnly? GioBatDauTheoLich { get; set; }
 }
 
 /// <summary>Một dòng trong bảng tổng hợp cuối tuần.</summary>

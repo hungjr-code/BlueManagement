@@ -1,4 +1,4 @@
-# ClassManagement — Backend (Phase 1 → 6)
+# ClassManagement — Backend (Phase 1 → 7)
 
 ASP.NET Core 9 Web API trên **PostgreSQL** (Npgsql; máy dev cũ từng chạy SQL Server Express), phục vụ frontend Vite + React.
 
@@ -8,14 +8,22 @@ ASP.NET Core 9 Web API trên **PostgreSQL** (Npgsql; máy dev cũ từng chạy 
   nhật ký sửa đổi, buổi dạy bù, và tổng quan "hôm nay dạy ai" / "tuần này dạy ai".
 - **Phase 3**: đăng nhập bằng Google và kết nối Google Calendar theo TỪNG GIÁO VIÊN (OAuth 2.0, một
   lần cấp quyền là vừa đăng nhập vừa nối lịch), chọn lịch đích, đẩy mỗi buổi học thành một sự kiện
-  vào lịch của chính giáo viên dạy buổi đó, và gỡ sự kiện khi buổi đó là nghỉ. Đồng bộ MỘT CHIỀU
-  (hệ thống → Google); nhận thay đổi từ Google về (webhook) chưa làm.
+  vào lịch của chính giáo viên dạy buổi đó, và gỡ sự kiện khi buổi đó là nghỉ.
 - **Phase 4**: học phí tính từ điểm danh, thu tiền nhiều lần (phiếu thu), danh sách sắp đến hạn/quá
   hạn, đối chiếu sao kê ngân hàng (máy đề xuất — người xác nhận), chốt sổ theo kỳ, và xuất sổ ra Excel.
 - **Phase 5**: ba đường vào hệ thống — admin tạo tài khoản, tự đăng ký (luôn là giáo viên), và Google
   tự tạo tài khoản cho email lạ; quên/đặt lại mật khẩu qua email, đổi mật khẩu thì thu hồi phiên cũ.
 - **Phase 6**: đọc lại nhật ký thay đổi — lọc theo khoảng ngày, hành động, bảng bị tác động và người
   thực hiện, có phân trang; admin thấy toàn trung tâm, giáo viên chỉ thấy việc do chính mình làm.
+- **Phase 7**: ba việc mới —
+  (a) **KÉO thay đổi từ Google Calendar về** (`POST /api/google-calendar/dong-bo-ve`): giáo viên đổi
+  giờ hoặc huỷ buổi ngay trên Google thì app cập nhật theo, có tự đồng bộ khi mở màn Lịch dạy/Tổng
+  quan (cách nhau ≥ 10 phút, tắt được trong Cài đặt);
+  (b) **tài liệu cho học sinh**: giáo viên gửi tệp lên Google Drive của CHÍNH MÌNH (quyền `drive.file`
+  — app chỉ thấy tệp do nó tạo), tệp không mở công khai, học sinh tải qua app, tên bài tập được ghi
+  vào mô tả sự kiện trên Google Calendar;
+  (c) **tài khoản học sinh**: đăng nhập bằng MÃ học sinh (HS-0007) + mật khẩu giáo viên cấp, xem bài
+  tập và lịch học + điểm danh của chính mình.
 
 ## Chạy lần đầu
 
@@ -49,7 +57,13 @@ python kiem-thu-phase3.py   # 55 bước: đăng nhập Google, cấp quyền, �
 python kiem-thu-phase4.py   # 67 bước: tính học phí, thu tiền, chốt sổ, đối chiếu ngân hàng, Excel
 python kiem-thu-phase5.py   # 43 bước: tự đăng ký, đăng ký bằng Google, quên/đặt lại mật khẩu
 python kiem-thu-phase6.py   # 37 bước: đọc nhật ký, lọc, phân trang, chặn giáo viên xem của người khác
+python kiem-thu-phase7.py   # 94 bước: kéo về từ Google, tài liệu + Drive, tài khoản học sinh
 ```
+
+Tổng **409 bước** (đã đạt 409/409 trên một database PostgreSQL mới, 26/10/2026). `kiem-thu-phase7.py`
+CŨNG cần chế độ giả (`GoogleCalendar__CheDoGia=true`): nó mượn khách Google giả để đóng vai giáo viên
+sửa giờ / huỷ sự kiện NGAY TRÊN GOOGLE (qua `/api/google-calendar/gia-sua-tren-google`) rồi kiểm xem
+chiều kéo về có phản ứng đúng, và mượn Drive giả để thử gửi/tải tài liệu mà không cần tài khoản thật.
 
 Các script chạy SQL qua **PostgreSQL** (`kiem_thu_pg.py`, thư viện `pg8000` — `python -m pip install pg8000`
 nếu máy còn thiếu). Chúng nối vào database theo biến môi trường **`CM_PG`** (chuỗi kết nối kiểu Npgsql);
@@ -102,6 +116,24 @@ làm lệch số liệu của nhau. Mật khẩu đọc từ user-secrets nên k
 | GET | `/api/dashboard/tuan-nay` | như trên | Tuần này dạy ai, số buổi chưa điểm danh, học phí dự kiến tháng |
 | PUT | `/api/teachers/me/tai-khoan-nhan-tien` | đã đăng nhập | Giáo viên tự khai tài khoản nhận tiền của mình (không ai khai hộ) |
 | GET | `/api/settings` | đã đăng nhập | Cấu hình chung (mẫu nội dung chuyển khoản, múi giờ, nhắc lịch) + số lượng giáo viên đã khai tài khoản (chỉ admin) |
+| POST | `/api/google-calendar/dong-bo-ve` | đã đăng nhập | KÉO thay đổi từ Google Calendar về app: đổi giờ thì cập nhật buổi, huỷ thì đánh dấu nghỉ (chỉ khi chưa điểm danh), dời ngày thì chỉ cảnh báo. `chiKhiQuaHan: true` để tự đồng bộ khi mở màn Lịch dạy (bỏ qua nếu chưa quá 10 phút) |
+| PUT | `/api/google-calendar/tu-dong-dong-bo` | đã đăng nhập | Bật/tắt tự kéo thay đổi từ Google về của CHÍNH người đang đăng nhập |
+| POST | `/api/tai-lieu` | đã đăng nhập | Gửi tài liệu (multipart: `tep`, `hocSinhId`, `buoiHocId?`, `tieuDe?`, `hanNop?`, `ghiChu?`) lên Google Drive của giáo viên; tệp KHÔNG mở công khai |
+| GET | `/api/tai-lieu/danh-sach` | như trên | Tài liệu đã giao, lọc theo `hocSinhId` / `buoiHocId` |
+| GET | `/api/tai-lieu/{id}/tai-ve` | chủ tài liệu hoặc admin | Tải tệp: app đọc hộ từ Drive rồi trả về, có kèm header Authorization |
+| DELETE | `/api/tai-lieu/{id}` | chủ tài liệu hoặc admin | Thu hồi tài liệu: xoá tệp trên Drive + đánh dấu đã xoá trong app |
+| GET | `/api/students/{id}/tai-khoan` | chủ sở hữu hoặc admin | Trạng thái tài khoản học sinh: mã, đã cấp mật khẩu chưa, lần đăng nhập cuối |
+| POST | `/api/students/{id}/tai-khoan` | chủ sở hữu hoặc admin | Cấp / đặt lại tài khoản học sinh; trả `maHocSinh` + `matKhauTam` ĐÚNG MỘT LẦN |
+| DELETE | `/api/students/{id}/tai-khoan` | chủ sở hữu hoặc admin | Thu hồi tài khoản: xoá mật khẩu, cắt mọi phiên của học sinh |
+| POST | `/api/hoc-sinh/auth/login` | công khai | Học sinh đăng nhập bằng `maHocSinh` + `matKhau` (cookie riêng `cm_phien_hs`) |
+| POST | `/api/hoc-sinh/auth/refresh` | công khai (cookie) | Làm mới phiên học sinh, xoay vòng refresh token |
+| POST | `/api/hoc-sinh/auth/logout` | công khai (cookie) | Thu hồi phiên học sinh hiện tại |
+| GET | `/api/hoc-sinh/auth/me` | token học sinh | Học sinh đang đăng nhập |
+| POST | `/api/hoc-sinh/auth/doi-mat-khau` | token học sinh | Học sinh tự đổi mật khẩu; cắt các phiên khác |
+| GET | `/api/hoc-sinh/toi` | token học sinh | Hồ sơ tối thiểu của chính em (không kèm học phí/phụ huynh) |
+| GET | `/api/hoc-sinh/bai-tap` | token học sinh | Bài tập giáo viên đã giao cho chính em |
+| GET | `/api/hoc-sinh/lich-hoc` | token học sinh | Buổi học của chính em trong khoảng ngày (tối đa 62 ngày) kèm tình trạng đi học |
+| GET | `/api/hoc-sinh/bai-tap/{id}/tai-ve` | token học sinh | Tải bài tập của chính em; bài của bạn khác trả 404 |
 | GET | `/api/nhat-ky` | admin: toàn trung tâm · giáo viên: chỉ việc do mình làm | Nhật ký thay đổi, lọc theo ngày / hành động / bảng bị tác động / người thực hiện, phân trang |
 | GET | `/api/nhat-ky/danh-muc` | như trên | Danh mục hành động và bảng đã từng có, để giao diện dựng bộ lọc từ dữ liệu thật |
 | PUT | `/api/settings` | admin | Sửa cấu hình chung |
@@ -130,7 +162,10 @@ Backend gửi kèm trong `BuoiHocDto.LopHocSinh` nên giao diện không phải 
 ## Bảng dữ liệu
 
 `GiaoVien` (tài khoản đăng nhập, kế thừa Identity nhưng không dùng bảng vai trò) ·
-`HocSinh` · `KhungGioHoc` (lịch học lặp hằng tuần) · `BuoiHoc` · `DiemDanh` · `HocPhi` · `PhieuThu` ·
+`HocSinh` (kèm `MaHocSinh` — mã đăng nhập của học sinh — và bản băm mật khẩu của học sinh) ·
+`KhungGioHoc` (lịch học lặp hằng tuần) · `BuoiHoc` · `DiemDanh` · `HocPhi` · `PhieuThu` ·
+`TaiLieu` (bài tập đã giao: giữ id tệp trên Drive của giáo viên, hạn nộp, gắn buổi học nào) ·
+`PhienHocSinh` (phiên đăng nhập của học sinh, TÁCH khỏi phiên giáo viên) ·
 `CaiDat` (đúng một dòng, Id = 1) · `PhienDangNhap` (refresh token đã băm) · `NhatKy` (nhật ký thao tác
 nhạy cảm) và ba bảng phụ của Identity (`GiaoVienQuyen`, `GiaoVienDangNhapNgoai`, `GiaoVienToken`).
 
@@ -292,6 +327,20 @@ curl -s http://localhost:5080/api/auth/tuy-chon-dang-nhap
 Khi đưa lên máy chủ thật: đổi hai Redirect URI (và `GoogleCalendar:FrontendUrl`) sang tên miền thật,
 khai lại trong Console, và bắt buộc dùng HTTPS.
 
+### Quyền Google đã xin (Phase 7 thêm quyền Drive)
+
+| Quyền | Để làm gì |
+|---|---|
+| `openid`, `email` | biết người đang đăng nhập là ai |
+| `calendar.events` | tạo/sửa/gỡ sự kiện của từng buổi, và đọc lại thay đổi |
+| `calendar.calendarlist.readonly` | xem danh sách lịch để chọn lịch đích |
+| `drive.file` | gửi tài liệu lên Drive của CHÍNH giáo viên (app chỉ thấy tệp do nó tạo, không đọc phần còn lại của Drive) |
+
+**Ai kết nối Google TRƯỚC khi có Phase 7 thì phải kết nối lại** (Ngắt kết nối → Kết nối Google
+Calendar) để cấp thêm quyền Drive; backend lưu chuỗi quyền đã cấp (`GiaoVien.GoogleQuyenDaCap`) nên
+`GET /api/google-calendar/trang-thai` trả `coQuyenDrive: false` và màn Cài đặt nhắc ngay, thay vì để
+họ gặp lỗi 403 khó hiểu lúc gửi bài.
+
 ### Khi đưa lên máy chủ thật
 
 - Đổi `GoogleCalendar:RedirectUri`, `GoogleCalendar:RedirectUriDangNhap` và `GoogleCalendar:FrontendUrl`
@@ -400,9 +449,14 @@ mở đường ĐỌC ra cho người dùng:
 
 ## Việc còn lại
 
-- **Webhook hai chiều với Google Calendar**: sửa sự kiện trên Google hiện KHÔNG quay về hệ thống
-  (đồng bộ một chiều hệ thống → Google). Muốn nhận thông báo của Google thì cần địa chỉ HTTPS công khai.
+- **Webhook của Google thay cho việc kéo theo lịch**: hiện chiều Google → app chạy khi mở màn Lịch
+  dạy/Tổng quan (hoặc bấm Đồng bộ lại), không phải thời gian thực. Muốn Google chủ động gọi vào thì
+  cần địa chỉ HTTPS công khai + `watch` channel, tức phải có máy chủ luôn thức — gói free của Render
+  ngủ sau ~15 phút nên chưa phù hợp.
 - **Sinh type từ OpenAPI** thay cho `src/api/types.ts` chép tay, và test frontend bằng Vitest.
-- **Tự động đồng bộ lịch theo giờ** thay vì bấm tay: gọi `POST /api/google-calendar/dong-bo` với
-  `tatCaGiaoVien: true` bằng một tài khoản admin hoặc job nội bộ.
+- **Tự động đẩy lịch theo giờ** (chiều app → Google) thay vì bấm tay: gọi
+  `POST /api/google-calendar/dong-bo` với `tatCaGiaoVien: true` bằng một tài khoản admin hoặc job nội
+  bộ. Chiều ngược lại đã có tự động khi mở app (Phase 7).
+- **Học sinh nộp bài qua app**: hiện học sinh chỉ TẢI bài tập về; muốn thu bài lại thì cần thêm bảng
+  bài nộp, hạn nộp và cách giáo viên xem bài đã nộp.
 - **Sinh mã QR tại chỗ** (hiện phụ thuộc `img.vietqr.io`, cần mạng) nếu sau này cần chạy offline.

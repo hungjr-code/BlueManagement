@@ -3,12 +3,14 @@ import {
   Alert,
   App,
   Button,
+  Col,
   Collapse,
   Empty,
   Flex,
   Input,
   Popover,
   Radio,
+  Row,
   Segmented,
   Select,
   Skeleton,
@@ -31,6 +33,8 @@ import type { BuoiHoc, LyDoNghi, TongHopDiemDanh, TrangThaiDiemDanh } from '../.
 import { usePhien } from '../../app/session'
 import { gioNgan } from '../../config/lichTuan'
 import { ThemBuoiDayBuModal } from './ThemBuoiDayBuModal'
+import { BieuDoTiLeChuyenCan } from '../../components/charts/BieuDoTiLeChuyenCan'
+import { BieuDoChuyenCanTheoNgay } from '../../components/charts/BieuDoChuyenCanTheoNgay'
 import {
   NHAN_LY_DO_NGHI,
   banNhapCua,
@@ -483,17 +487,58 @@ export function AttendancePage() {
       {!buoiHoc.isPending && !loiTai && duLieu.length > 0 ? (
         <Collapse
           ghost
+          defaultActiveKey={['tong-hop']}
           style={{ marginTop: 16 }}
           items={[
             {
               key: 'tong-hop',
               label: (
-                <Typography.Text type="secondary">
-                  Tổng hợp {cheDo === 'tuan' ? 'tuần' : 'khoảng'} · {duLieu.length} buổi
+                <Typography.Text type="secondary" strong>
+                  Phân tích tỷ lệ chuyên cần & Tổng hợp {cheDo === 'tuan' ? 'tuần' : 'khoảng'} · {duLieu.length} buổi
                 </Typography.Text>
               ),
               children: (
                 <Flex vertical gap={16}>
+                  {/* Biểu đồ tỷ lệ chuyên cần và phân bổ ngày */}
+                  <Row gutter={[16, 16]}>
+                    <Col xs={24} lg={12}>
+                      <BieuDoTiLeChuyenCan
+                        soBuoi={duLieu.length}
+                        soDiHoc={
+                          duLieu.filter((b) => banNhapCua(b, dangSua).trangThai === 'di_hoc').length
+                        }
+                        soNghiCoPhep={
+                          duLieu.filter((b) => {
+                            const n = banNhapCua(b, dangSua)
+                            return n.trangThai === 'nghi' && n.lyDoNghi === 'co_phep'
+                          }).length
+                        }
+                        soNghiKhongPhep={
+                          duLieu.filter((b) => {
+                            const n = banNhapCua(b, dangSua)
+                            return n.trangThai === 'nghi' && n.lyDoNghi !== 'co_phep'
+                          }).length
+                        }
+                        soChuaDiemDanh={
+                          duLieu.filter(
+                            (b) => banNhapCua(b, dangSua).trangThai === 'chua_diem_danh',
+                          ).length
+                        }
+                        title={`Tỷ lệ chuyên cần (${khoang.moTa})`}
+                        subTitle={`${duLieu.length} buổi học trong khoảng`}
+                      />
+                    </Col>
+                    <Col xs={24} lg={12}>
+                      <BieuDoChuyenCanTheoNgay
+                        buoiHoc={duLieu}
+                        tuNgay={khoang.tuNgay}
+                        denNgay={khoang.denNgay}
+                        title="Phân bổ điểm danh theo ngày"
+                        subTitle="Số lượng buổi đi học và nghỉ theo từng ngày"
+                      />
+                    </Col>
+                  </Row>
+
                   <div>
                     <Typography.Text strong>Theo học sinh</Typography.Text>
                     <Table<TongHopDiemDanh>

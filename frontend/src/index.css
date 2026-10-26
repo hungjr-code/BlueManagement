@@ -71,6 +71,11 @@ body {
   color: #0f172a;
 }
 
+/* Buổi lệch với Google Calendar mà hệ thống không tự sửa — chấm vàng trên ô lịch. */
+.cham.canh-bao {
+  background: #f59e0b;
+}
+
 /* --------------------------------- Ô lịch --------------------------------- */
 .luoi-lich {
   border: 1px solid #e6edf5;

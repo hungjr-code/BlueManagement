@@ -24,6 +24,16 @@ public class JwtOptions
 
     public int RefreshTokenDays { get; set; } = 14;
 
+    /// <summary>
+    /// Audience riêng cho token của HỌC SINH.
+    ///
+    /// Đây là hàng rào cứng giữa hai loại tài khoản: token học sinh mang audience này nên middleware
+    /// xác thực của giáo viên từ chối thẳng, chứ không phụ thuộc vào việc từng controller có nhớ kiểm
+    /// tra vai trò hay không. Đổi giá trị này là đăng xuất hết học sinh — không sao, họ đăng nhập lại
+    /// bằng mã học sinh.
+    /// </summary>
+    public string AudienceHocSinh => Audience + ".hoc-sinh";
+
     /// <summary>Dừng ngay lúc khởi động nếu cấu hình thiếu, thay vì lỗi mơ hồ lúc đăng nhập.</summary>
     public void KiemTraHopLe()
     {

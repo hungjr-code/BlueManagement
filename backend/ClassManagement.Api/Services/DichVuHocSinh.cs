@@ -1,3 +1,4 @@
+using ClassManagement.Api.Common;
 using ClassManagement.Api.Data;
 using ClassManagement.Api.Dtos;
 using ClassManagement.Api.Entities;
@@ -9,7 +10,10 @@ namespace ClassManagement.Api.Services;
 /// Nghiệp vụ học sinh: kiểm tra dữ liệu, tạo/sửa/nghỉ và đóng gói DTO.
 /// Gom vào một chỗ để màn hình Học sinh, Điểm danh và Tổng quan dùng đúng cùng một cách hiểu.
 /// </summary>
-public class DichVuHocSinh(AppDbContext db, DichVuBuoiHoc dichVuBuoiHoc)
+public class DichVuHocSinh(
+    AppDbContext db,
+    DichVuBuoiHoc dichVuBuoiHoc,
+    DichVuTaiKhoanHocSinh taiKhoanHocSinh)
 {
     /// <summary>
     /// Kiểm tra dữ liệu học sinh. Trả về lỗi theo từng field, khớp cấu trúc ProblemDetails.errors
@@ -140,6 +144,23 @@ public class DichVuHocSinh(AppDbContext db, DichVuBuoiHoc dichVuBuoiHoc)
                 GioBatDau = khung.GioBatDau,
                 GioKetThuc = khung.GioKetThuc,
             });
+        }
+
+        // Mã đăng nhập do giáo viên nhập, hoặc hệ thống tự sinh (HS-0001…). Luôn có mã ngay từ đầu
+        // để giáo viên đọc được cho học sinh mà không phải làm thêm bước nào.
+        hocSinh.MaHocSinh = string.IsNullOrWhiteSpace(yeuCau.MaHocSinh)
+            ? await taiKhoanHocSinh.TaoMaHocSinhAsync(huyBo)
+            : DichVuTaiKhoanHocSinh.ChuanHoaMa(yeuCau.MaHocSinh);
+
+        var trungMa = await db.HocSinh.AnyAsync(x => x.MaHocSinh == hocSinh.MaHocSinh, huyBo);
+        if (trungMa)
+        {
+            throw LoiApiException.DuLieuSai(
+                "Mã học sinh đã có người dùng.",
+                new Dictionary<string, string[]>
+                {
+                    [nameof(TaoHocSinhRequest.MaHocSinh)] = ["Chọn mã khác, hoặc để trống cho hệ thống tự sinh"],
+                });
         }
 
         db.HocSinh.Add(hocSinh);
@@ -280,6 +301,11 @@ public class DichVuHocSinh(AppDbContext db, DichVuBuoiHoc dichVuBuoiHoc)
             Lop = hocSinh.Lop,
             GhiChu = hocSinh.GhiChu,
             TrangThai = hocSinh.TrangThai,
+            MaHocSinh = hocSinh.MaHocSinh,
+            CoTaiKhoan = !string.IsNullOrWhiteSpace(hocSinh.MatKhauBam),
+            LanDangNhapCuoiNgay = hocSinh.LanDangNhapCuoiUtc is { } luc
+                ? DateOnly.FromDateTime(luc)
+                : null,
             LichHoc = hocSinh.LichHoc
                 .OrderBy(x => x.Thu)
                 .ThenBy(x => x.GioBatDau)

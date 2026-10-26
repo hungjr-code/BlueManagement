@@ -13,7 +13,7 @@ import {
   Typography,
 } from 'antd'
 import type { TableProps } from 'antd'
-import { EditOutlined, PlusOutlined, StopOutlined } from '@ant-design/icons'
+import { EditOutlined, KeyOutlined, PlusOutlined, StopOutlined } from '@ant-design/icons'
 import { PageHeader } from '../../components/page'
 import { useChoHocSinhNghi, useDanhSachHocSinh } from '../../api/students'
 import { useDanhSachGiaoVien } from '../../api/teachers'
@@ -21,6 +21,7 @@ import type { BoLocHocSinh, HocSinh, TrangThaiHocSinh } from '../../api/types'
 import { usePhien } from '../../app/session'
 import { formatVnd } from '../../lib/money'
 import { FormHocSinh } from './FormHocSinh'
+import { TaiKhoanHocSinhModal } from './TaiKhoanHocSinhModal'
 import { LoiApiAlert } from '../../components/LoiApiAlert'
 import {
   SO_TUAN_MOI_THANG,
@@ -125,6 +126,8 @@ export function StudentsPage() {
     })
   }
 
+  const [hocSinhTaiKhoan, datHocSinhTaiKhoan] = useState<HocSinh | null>(null)
+
   const cot: TableProps<HocSinh>['columns'] = [
     {
       title: 'Tên học sinh',
@@ -137,6 +140,27 @@ export function StudentsPage() {
             <Typography.Text type="secondary" style={{ fontSize: 12 }}>
               {[hocSinh.phuHuynh, hocSinh.soDienThoaiPhuHuynh].filter(Boolean).join(' · ')}
             </Typography.Text>
+          ) : null}
+        </Flex>
+      ),
+    },
+    {
+      title: 'Mã đăng nhập',
+      dataIndex: 'maHocSinh',
+      width: 150,
+      render: (ma: string | null, hocSinh) => (
+        <Flex vertical gap={2}>
+          <Typography.Text copyable={Boolean(ma)}>{ma ?? '—'}</Typography.Text>
+          {ma ? (
+            hocSinh.coTaiKhoan ? (
+              <Tag color="success" style={{ width: 'fit-content' }}>
+                Đã cấp mật khẩu
+              </Tag>
+            ) : (
+              <Tag color="warning" style={{ width: 'fit-content' }}>
+                Chưa cấp mật khẩu
+              </Tag>
+            )
           ) : null}
         </Flex>
       ),
@@ -215,7 +239,7 @@ export function StudentsPage() {
     {
       title: 'Thao tác',
       key: 'thaoTac',
-      width: 160,
+      width: 250,
       fixed: 'right',
       render: (_giaTri, hocSinh) => (
         <Space size="small">
@@ -227,6 +251,15 @@ export function StudentsPage() {
             }}
           >
             Sửa
+          </Button>
+          <Button
+            size="small"
+            icon={<KeyOutlined />}
+            onClick={() => {
+              datHocSinhTaiKhoan(hocSinh)
+            }}
+          >
+            Tài khoản
           </Button>
           <Button
             size="small"
@@ -374,6 +407,13 @@ export function StudentsPage() {
           </Flex>
         </Card>
       </Flex>
+
+      <TaiKhoanHocSinhModal
+        hocSinh={hocSinhTaiKhoan}
+        onClose={() => {
+          datHocSinhTaiKhoan(null)
+        }}
+      />
 
       <FormHocSinh
         open={dangMoForm}

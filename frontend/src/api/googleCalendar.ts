@@ -1,6 +1,12 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { http } from './http'
-import type { DuongDanUyQuyen, KetQuaDongBo, LichGoogle, TrangThaiGoogle } from './types'
+import type {
+  DuongDanUyQuyen,
+  KetQuaDongBo,
+  KetQuaDongBoVe,
+  LichGoogle,
+  TrangThaiGoogle,
+} from './types'
 
 /**
  * Kết nối Google Calendar và đồng bộ lịch dạy.
@@ -41,10 +47,32 @@ export async function chonLichGoogle(calendarId: string): Promise<void> {
   await http.put('/google-calendar/chon-lich', { calendarId })
 }
 
-/** Đồng bộ ngay. Bỏ trống khoảng ngày thì backend đồng bộ từ hôm nay tới hết tháng sau. */
+/** Đẩy lịch dạy lên Google. Bỏ trống khoảng ngày thì backend lấy từ hôm nay tới hết tháng sau. */
 export async function dongBoGoogle(thamSo?: { tuNgay?: string; denNgay?: string }): Promise<KetQuaDongBo> {
   const { data } = await http.post<KetQuaDongBo>('/google-calendar/dong-bo', thamSo ?? {})
   return data
+}
+
+/**
+ * KÉO thay đổi từ Google về app (chiều ngược lại): giáo viên đổi giờ hay huỷ buổi ngay trên Google
+ * thì lần kéo này đưa thay đổi đó vào app.
+ *
+ * `chiKhiQuaHan = true` dùng cho việc TỰ đồng bộ khi mở màn Lịch dạy: máy chủ tự bỏ qua nếu lần
+ * trước chưa quá 10 phút, nên mở đi mở lại vài lần không gọi Google liên tục. Nút "Đồng bộ lại"
+ * truyền false để chạy ngay.
+ */
+export async function dongBoVeGoogle(thamSo?: {
+  tuNgay?: string
+  denNgay?: string
+  chiKhiQuaHan?: boolean
+}): Promise<KetQuaDongBoVe> {
+  const { data } = await http.post<KetQuaDongBoVe>('/google-calendar/dong-bo-ve', thamSo ?? {})
+  return data
+}
+
+/** Bật/tắt tự kéo thay đổi từ Google về khi mở màn Lịch dạy — của chính người đang đăng nhập. */
+export async function datTuDongDongBo(bat: boolean): Promise<void> {
+  await http.put('/google-calendar/tu-dong-dong-bo', { bat })
 }
 
 export function useTrangThaiGoogle() {
@@ -95,6 +123,31 @@ export function useDongBoGoogle() {
       void queryClient.invalidateQueries({ queryKey: GOOGLE_QUERY_KEY })
       void queryClient.invalidateQueries({ queryKey: ['buoi-hoc'] })
       void queryClient.invalidateQueries({ queryKey: ['dashboard'] })
+    },
+  })
+}
+
+export function useDongBoVeGoogle() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: dongBoVeGoogle,
+    onSuccess: (ketQua) => {
+      // Bỏ qua (chưa quá 10 phút) thì không có gì đổi, khỏi tải lại lịch cho nặng.
+      if (ketQua.boQua) return
+
+      void queryClient.invalidateQueries({ queryKey: GOOGLE_QUERY_KEY })
+      void queryClient.invalidateQueries({ queryKey: ['buoi-hoc'] })
+      void queryClient.invalidateQueries({ queryKey: ['dashboard'] })
+    },
+  })
+}
+
+export function useDatTuDongDongBo() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: datTuDongDongBo,
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: GOOGLE_QUERY_KEY })
     },
   })
 }

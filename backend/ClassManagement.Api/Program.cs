@@ -126,6 +126,11 @@ builder.Services
 
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<NguoiDungHienTai>();
+
+// Học sinh: người dùng của request + nghiệp vụ tài khoản/tài liệu của học sinh.
+builder.Services.AddScoped<NguoiHocSinhHienTai>();
+builder.Services.AddScoped<DichVuTaiKhoanHocSinh>();
+builder.Services.AddScoped<DichVuTaiLieu>();
 builder.Services.AddScoped<DichVuNhatKy>();
 builder.Services.AddScoped<DichVuBuoiHoc>();
 builder.Services.AddScoped<DichVuHocSinh>();
@@ -157,6 +162,10 @@ builder.Services.AddHttpClient<KhachGoogleCalendarThat>();
 builder.Services.AddScoped<DichVuGoogleCalendar>();
 builder.Services.AddScoped<DichVuDongBoLich>();
 
+// Google Drive: nơi chứa tệp bài tập. Timeout dài hơn mặc định vì tải tệp lên/xuống có thể lâu
+// hơn 100 giây với tệp vài chục MB.
+builder.Services.AddHttpClient<KhachGoogleDriveThat>(http => http.Timeout = TimeSpan.FromMinutes(10));
+
 var tuyChonGoogle = builder.Configuration.GetSection(GoogleCalendarOptions.TenMuc).Get<GoogleCalendarOptions>()
     ?? new GoogleCalendarOptions();
 
@@ -165,10 +174,12 @@ if (builder.Environment.IsDevelopment() && tuyChonGoogle.CheDoGia)
     // Khách Google giả: CHỈ ở máy dev và chỉ khi bật CheDoGia, để thử luồng đồng bộ mà không cần
     // tài khoản Google thật. Máy chạy thật luôn dùng khách thật.
     builder.Services.AddScoped<IKhachGoogleCalendar, KhachGoogleCalendarGia>();
+    builder.Services.AddScoped<IKhachGoogleDrive, KhachGoogleDriveGia>();
 }
 else
 {
     builder.Services.AddScoped<IKhachGoogleCalendar>(dichVu => dichVu.GetRequiredService<KhachGoogleCalendarThat>());
+    builder.Services.AddScoped<IKhachGoogleDrive>(dichVu => dichVu.GetRequiredService<KhachGoogleDriveThat>());
 }
 builder.Services.AddSingleton<JwtTokenService>();
 builder.Services.Configure<SeedOptions>(builder.Configuration.GetSection(SeedOptions.TenMuc));
@@ -207,6 +218,26 @@ builder.Services
             IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(tuyChonJwt.Key!)),
             ValidateLifetime = true,
             // Máy chủ và máy khách lệch nhau vài giây là chuyện thường, không nên đá người dùng ra.
+            ClockSkew = TimeSpan.FromSeconds(30),
+            NameClaimType = "sub",
+            RoleClaimType = ChinhSach.ClaimVaiTro,
+        };
+    })
+    // Lược đồ riêng cho token của HỌC SINH: chỉ khác ở audience. Nhờ tách ra như vậy, token học sinh
+    // KHÔNG dùng được cho bất kỳ API nào của giáo viên (và ngược lại) — hàng rào nằm ở tầng xác thực,
+    // không phụ thuộc việc từng controller có nhớ kiểm tra vai trò hay không.
+    .AddJwtBearer(ChinhSach.LuocDoTokenHocSinh, tuyChon =>
+    {
+        tuyChon.MapInboundClaims = false;
+        tuyChon.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateIssuer = true,
+            ValidIssuer = tuyChonJwt.Issuer,
+            ValidateAudience = true,
+            ValidAudience = tuyChonJwt.AudienceHocSinh,
+            ValidateIssuerSigningKey = true,
+            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(tuyChonJwt.Key!)),
+            ValidateLifetime = true,
             ClockSkew = TimeSpan.FromSeconds(30),
             NameClaimType = "sub",
             RoleClaimType = ChinhSach.ClaimVaiTro,

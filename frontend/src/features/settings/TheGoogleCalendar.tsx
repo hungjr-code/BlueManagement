@@ -11,6 +11,7 @@ import {
   Select,
   Skeleton,
   Space,
+  Switch,
   Tag,
   Typography,
 } from 'antd'
@@ -26,12 +27,14 @@ import { http } from '../../api/http'
 import {
   useChonLichGoogle,
   useDanhSachLichGoogle,
+  useDatTuDongDongBo,
   useDongBoGoogle,
+  useDongBoVeGoogle,
   useLayDuongDanUyQuyen,
   useNgatKetNoiGoogle,
   useTrangThaiGoogle,
 } from '../../api/googleCalendar'
-import { laLoiChuaCauHinh, noiDungLoi, thoiDiemDiaPhuong, tomTatDongBo } from './hienThiGoogle'
+import { laLoiChuaCauHinh, noiDungLoi, thoiDiemDiaPhuong, tomTatDongBo, tomTatDongBoVe } from './hienThiGoogle'
 
 interface TheGoogleCalendarProps {
   laAdmin: boolean
@@ -75,6 +78,8 @@ export function TheGoogleCalendar({ laAdmin }: TheGoogleCalendarProps) {
   const layDuongDan = useLayDuongDanUyQuyen()
   const chonLich = useChonLichGoogle()
   const dongBo = useDongBoGoogle()
+  const dongBoVe = useDongBoVeGoogle()
+  const datTuDong = useDatTuDongDongBo()
   const ngatKetNoi = useNgatKetNoiGoogle()
   const tongHop = useTongHopGoogle(laAdmin)
 
@@ -144,7 +149,14 @@ export function TheGoogleCalendar({ laAdmin }: TheGoogleCalendarProps) {
     }
   }
 
-  const dongBoNgay = async () => {
+  /**
+   * "Đồng bộ lại" = đẩy lên TRƯỚC rồi kéo về SAU, đúng thứ tự đó:
+   *  - đẩy lên trước để những gì vừa sửa trong app có mặt trên Google;
+   *  - kéo về sau để lấy những gì giáo viên sửa trực tiếp trên Google (đổi giờ, huỷ buổi).
+   *
+   * Ngược thứ tự sẽ khiến thay đổi cũ trên Google ghi đè thay đổi vừa làm trong app.
+   */
+  const dongBoLai = async () => {
     setLoiDongBo(null)
     const thamSo: ThamSoDongBo = laAdmin && dongBoTatCa ? { tatCaGiaoVien: true } : {}
 
@@ -162,9 +174,21 @@ export function TheGoogleCalendar({ laAdmin }: TheGoogleCalendarProps) {
         return
       }
 
-      message.success(`${tomTatDongBo(ketQua)} — hoàn tất đồng bộ`)
+      const ve = await dongBoVe.mutateAsync({ chiKhiQuaHan: false })
+
+      const phanKeoVe = [
+        ve.soDoiGio > 0 ? `cập nhật giờ ${ve.soDoiGio} buổi` : null,
+        ve.soDanhDauNghi > 0 ? `đánh dấu nghỉ ${ve.soDanhDauNghi} buổi` : null,
+        ve.soCanhBao > 0 ? `${ve.soCanhBao} chỗ cần xem lại` : null,
+      ]
+        .filter(Boolean)
+        .join(', ')
+
+      message.success(
+        `${tomTatDongBo(ketQua)} — đã đẩy lên. Kéo về: ${phanKeoVe || 'không có gì thay đổi'}.`,
+      )
     } catch (error) {
-      message.error(noiDungLoi(error, 'Không đồng bộ được lên Google Calendar'))
+      message.error(noiDungLoi(error, 'Không đồng bộ được với Google Calendar'))
     }
   }
 
@@ -271,7 +295,20 @@ export function TheGoogleCalendar({ laAdmin }: TheGoogleCalendarProps) {
           {daKetNoi ? (
             <Descriptions.Item label="Lịch đích ghi sự kiện">{duLieu.calendarId ?? 'Lịch mặc định'}</Descriptions.Item>
           ) : null}
-          <Descriptions.Item label="Lần đồng bộ gần nhất">
+          <Descriptions.Item label="Lần kéo thay đổi từ Google về">
+            {duLieu.lanDongBoVeCuoi ? (
+              <Space direction="vertical" size={2}>
+                <Typography.Text>{tomTatDongBoVe(duLieu.lanDongBoVeCuoi)}</Typography.Text>
+                <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+                  lúc {thoiDiemDiaPhuong(duLieu.lanDongBoVeCuoi.thoiDiemUtc)}
+                </Typography.Text>
+              </Space>
+            ) : (
+              'Chưa kéo về lần nào'
+            )}
+          </Descriptions.Item>
+
+          <Descriptions.Item label="Lần đẩy lên Google gần nhất">
             {lanCuoi ? (
               <Space direction="vertical" size={2}>
                 <Typography.Text>{tomTatDongBo(lanCuoi)}</Typography.Text>
@@ -289,6 +326,45 @@ export function TheGoogleCalendar({ laAdmin }: TheGoogleCalendarProps) {
             )}
           </Descriptions.Item>
         </Descriptions>
+
+        {daKetNoi ? (
+          <Flex vertical gap={6}>
+            <Space size={8} wrap>
+              <Switch
+                checked={duLieu.tuDongDongBo}
+                loading={datTuDong.isPending}
+                onChange={(bat: boolean) => {
+                  datTuDong.mutate(bat, {
+                    onSuccess: () => {
+                      message.success(
+                        bat
+                          ? 'Đã bật: mở màn Lịch dạy sẽ tự kéo thay đổi từ Google về'
+                          : 'Đã tắt tự động kéo thay đổi từ Google về',
+                      )
+                    },
+                    onError: (error: unknown) => {
+                      message.error(noiDungLoi(error, 'Không đổi được cài đặt tự đồng bộ'))
+                    },
+                  })
+                }}
+              />
+              <Typography.Text>Tự kéo thay đổi từ Google về khi mở màn Lịch dạy</Typography.Text>
+            </Space>
+            <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+              Cách nhau ít nhất 10 phút, nên mở đi mở lại vài lần không gọi Google liên tục. Muốn chạy
+              ngay thì bấm Đồng bộ lại.
+            </Typography.Text>
+          </Flex>
+        ) : null}
+
+        {daKetNoi && !duLieu.coQuyenDrive ? (
+          <Alert
+            type="warning"
+            showIcon
+            message="Chưa có quyền gửi tài liệu lên Drive"
+            description="Tài khoản Google này kết nối từ trước khi có tính năng giao bài. Bấm Ngắt kết nối rồi Kết nối Google Calendar lại để cấp thêm quyền Drive."
+          />
+        ) : null}
 
         {laAdmin && tongHop.data ? (
           <Card size="small" type="inner" title="Tổng hợp kết nối của giáo viên">
@@ -352,12 +428,12 @@ export function TheGoogleCalendar({ laAdmin }: TheGoogleCalendarProps) {
               <Button
                 type="primary"
                 icon={<SyncOutlined />}
-                loading={dongBo.isPending}
+                loading={dongBo.isPending || dongBoVe.isPending}
                 onClick={() => {
-                  void dongBoNgay()
+                  void dongBoLai()
                 }}
               >
-                Đồng bộ ngay
+                Đồng bộ lại
               </Button>
               <Button danger icon={<DisconnectOutlined />} onClick={hoiNgatKetNoi}>
                 Ngắt kết nối

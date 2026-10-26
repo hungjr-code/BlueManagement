@@ -100,10 +100,33 @@ public class GoogleCalendarOptions
     ];
 
     /// <summary>
-    /// Toàn bộ quyền xin trong MỘT lần cấp quyền, dùng chung cho cả đăng nhập và kết nối lịch: người
-    /// dùng đồng ý một lần là vừa đăng nhập được, vừa có sẵn đường đồng bộ lịch.
+    /// Quyền trên Google Drive để giáo viên gửi tài liệu (đề bài, phiếu bài tập) cho học sinh.
+    ///
+    /// Cố tình dùng <c>drive.file</c> — hẹp nhất có thể: app CHỈ thấy được những tệp do chính nó tạo,
+    /// không đọc được phần còn lại của Drive. Nhờ vậy xin quyền này không mở rộng phạm vi dữ liệu
+    /// của người dùng, và tệp không cần mở công khai: học sinh tải qua app.
     /// </summary>
-    public static IReadOnlyList<string> QuyenCanXin { get; } = [.. QuyenDangNhap, .. QuyenLich];
+    public static readonly string[] QuyenDrive =
+    [
+        "https://www.googleapis.com/auth/drive.file",
+    ];
+
+    /// <summary>
+    /// Toàn bộ quyền xin trong MỘT lần cấp quyền, dùng chung cho cả đăng nhập, kết nối lịch và gửi
+    /// tài liệu: người dùng đồng ý một lần là dùng được cả ba việc.
+    /// </summary>
+    public static IReadOnlyList<string> QuyenCanXin { get; } = [.. QuyenDangNhap, .. QuyenLich, .. QuyenDrive];
 
     public static string QuyenChuoi => string.Join(' ', QuyenCanXin);
+
+    /// <summary>
+    /// Token đã cấp có quyền ghi tài liệu lên Drive chưa. Người kết nối TRƯỚC khi app bổ sung quyền
+    /// này sẽ thiếu nó, và Google trả 403 khi app cố tải tệp lên — nên phải phát hiện sớm để bảo họ
+    /// kết nối lại, thay vì để họ gặp một lỗi khó hiểu lúc gửi bài.
+    /// </summary>
+    public static bool CoQuyenDrive(string? quyenDaCap)
+    {
+        return !string.IsNullOrWhiteSpace(quyenDaCap)
+            && quyenDaCap.Contains("drive.file", StringComparison.OrdinalIgnoreCase);
+    }
 }

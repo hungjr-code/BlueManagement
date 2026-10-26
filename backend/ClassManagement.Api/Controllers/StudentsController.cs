@@ -24,6 +24,7 @@ public class StudentsController(
     AppDbContext db,
     NguoiDungHienTai nguoiDungHienTai,
     DichVuHocSinh dichVuHocSinh,
+    DichVuTaiKhoanHocSinh taiKhoanHocSinh,
     DichVuNhatKy nhatKy) : ControllerBase
 {
     [HttpGet]
@@ -255,6 +256,67 @@ public class StudentsController(
             DichVuNhatKy.Json(new { trangThai = TrangThaiHocSinh.DaNghi, soBuoiXoa }),
             huyBo);
 
+        return NoContent();
+    }
+
+    /* ------------------------------------------------------------------ *
+     * Tài khoản đăng nhập của học sinh
+     * ------------------------------------------------------------------ */
+
+    /// <summary>Trạng thái tài khoản: đã có mã chưa, đã cấp mật khẩu chưa, lần cuối em đăng nhập.</summary>
+    [HttpGet("{id:guid}/tai-khoan")]
+    public async Task<ActionResult<TaiKhoanHocSinhDto>> TrangThaiTaiKhoan(Guid id, CancellationToken huyBo)
+    {
+        var toi = await nguoiDungHienTai.YeuCauAsync(huyBo);
+        var hocSinh = await LayTrongPhamViAsync(toi, id, huyBo)
+            ?? throw LoiApiException.NgoaiPhamVi("học sinh");
+
+        return Ok(await taiKhoanHocSinh.LayTrangThaiTaiKhoanAsync(hocSinh, huyBo));
+    }
+
+    /// <summary>
+    /// Cấp hoặc đặt lại tài khoản đăng nhập cho học sinh. Mật khẩu tạm trả về ĐÚNG MỘT LẦN — giáo
+    /// viên đọc cho học sinh ngay, quên thì đặt lại chứ không xem lại được.
+    /// </summary>
+    [HttpPost("{id:guid}/tai-khoan")]
+    public async Task<ActionResult<CapTaiKhoanHocSinhDto>> CapTaiKhoan(
+        Guid id,
+        DatLaiMatKhauHocSinhRequest yeuCau,
+        CancellationToken huyBo)
+    {
+        var toi = await nguoiDungHienTai.YeuCauAsync(huyBo);
+
+        var hocSinh = await db.HocSinh.FirstOrDefaultAsync(x => x.Id == id, huyBo);
+
+        if (hocSinh is null || (toi.VaiTro != VaiTro.Admin && hocSinh.GiaoVienId != toi.Id))
+        {
+            throw LoiApiException.NgoaiPhamVi("học sinh");
+        }
+
+        var ketQua = await taiKhoanHocSinh.CapTaiKhoanAsync(
+            hocSinh,
+            yeuCau.MaHocSinh,
+            yeuCau.MatKhauMoi,
+            toi.Id,
+            huyBo);
+
+        return Ok(ketQua);
+    }
+
+    /// <summary>Thu hồi tài khoản: học sinh không đăng nhập được nữa, mọi phiên đang mở bị cắt.</summary>
+    [HttpDelete("{id:guid}/tai-khoan")]
+    public async Task<IActionResult> ThuHoiTaiKhoan(Guid id, CancellationToken huyBo)
+    {
+        var toi = await nguoiDungHienTai.YeuCauAsync(huyBo);
+
+        var hocSinh = await db.HocSinh.FirstOrDefaultAsync(x => x.Id == id, huyBo);
+
+        if (hocSinh is null || (toi.VaiTro != VaiTro.Admin && hocSinh.GiaoVienId != toi.Id))
+        {
+            throw LoiApiException.NgoaiPhamVi("học sinh");
+        }
+
+        await taiKhoanHocSinh.ThuHoiTaiKhoanAsync(hocSinh, toi.Id, huyBo);
         return NoContent();
     }
 

@@ -96,6 +96,7 @@ export interface KyHocPhi {
 
 export interface BoLocHocPhi extends KyHocPhi {
   trangThai?: TrangThaiThanhToan
+  giaoVienId?: string
 }
 
 export interface KetQuaTinhKy extends KyHocPhi {

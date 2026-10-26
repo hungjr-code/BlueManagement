@@ -17,7 +17,7 @@ namespace ClassManagement.Api.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "9.0.20")
+                .HasAnnotation("ProductVersion", "9.0.21")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
@@ -34,15 +34,28 @@ namespace ClassManagement.Api.Migrations
                     b.Property<TimeOnly>("GioBatDau")
                         .HasColumnType("time without time zone");
 
+                    b.Property<TimeOnly?>("GioBatDauTheoLich")
+                        .HasColumnType("time without time zone");
+
                     b.Property<TimeOnly>("GioKetThuc")
                         .HasColumnType("time without time zone");
 
+                    b.Property<bool>("GoogleDaHuy")
+                        .HasColumnType("boolean");
+
                     b.Property<DateTime?>("GoogleDongBoUtc")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<DateTime?>("GoogleDongBoVeUtc")
                         .HasColumnType("timestamp without time zone");
 
                     b.Property<string>("GoogleEventId")
                         .HasMaxLength(200)
                         .HasColumnType("character varying(200)");
+
+                    b.Property<string>("GoogleLechGanNhat")
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)");
 
                     b.Property<Guid>("HocSinhId")
                         .HasColumnType("uuid");
@@ -200,6 +213,13 @@ namespace ClassManagement.Api.Migrations
                         .HasMaxLength(256)
                         .HasColumnType("character varying(256)");
 
+                    b.Property<DateTime?>("GoogleDongBoVeUtc")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<string>("GoogleQuyenDaCap")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)");
+
                     b.Property<string>("GoogleRefreshTokenMaHoa")
                         .HasMaxLength(2000)
                         .HasColumnType("character varying(2000)");
@@ -207,6 +227,11 @@ namespace ClassManagement.Api.Migrations
                     b.Property<string>("GoogleTaiKhoan")
                         .HasMaxLength(256)
                         .HasColumnType("character varying(256)");
+
+                    b.Property<bool>("GoogleTuDongDongBo")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(true);
 
                     b.Property<string>("HoTen")
                         .IsRequired()
@@ -393,9 +418,23 @@ namespace ClassManagement.Api.Migrations
                         .HasPrecision(18, 2)
                         .HasColumnType("numeric(18,2)");
 
+                    b.Property<DateTime?>("KhoaDenLuc")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<DateTime?>("LanDangNhapCuoiUtc")
+                        .HasColumnType("timestamp without time zone");
+
                     b.Property<string>("Lop")
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)");
+
+                    b.Property<string>("MaHocSinh")
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<string>("MatKhauBam")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
 
                     b.Property<DateOnly>("NgayBatDau")
                         .HasColumnType("date");
@@ -420,6 +459,9 @@ namespace ClassManagement.Api.Migrations
                         .HasMaxLength(30)
                         .HasColumnType("character varying(30)");
 
+                    b.Property<int>("SoLanSaiMatKhau")
+                        .HasColumnType("integer");
+
                     b.Property<string>("TrangThai")
                         .IsRequired()
                         .HasMaxLength(20)
@@ -430,6 +472,10 @@ namespace ClassManagement.Api.Migrations
                     b.HasIndex("GiaoVienId");
 
                     b.HasIndex("HoTen");
+
+                    b.HasIndex("MaHocSinh")
+                        .IsUnique()
+                        .HasFilter("\"MaHocSinh\" IS NOT NULL");
 
                     b.HasIndex("TrangThai");
 
@@ -555,6 +601,50 @@ namespace ClassManagement.Api.Migrations
                     b.ToTable("PhienDangNhap", (string)null);
                 });
 
+            modelBuilder.Entity("ClassManagement.Api.Entities.PhienHocSinh", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("DiaChiIp")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<DateTime>("HetHanUtc")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<Guid>("HocSinhId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("NgayTaoUtc")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<DateTime?>("NgayThuHoiUtc")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<Guid?>("ThayTheBoiId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("ThietBi")
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)");
+
+                    b.Property<string>("TokenBam")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("HocSinhId");
+
+                    b.HasIndex("TokenBam")
+                        .IsUnique();
+
+                    b.ToTable("PhienHocSinh", (string)null);
+                });
+
             modelBuilder.Entity("ClassManagement.Api.Entities.PhieuThu", b =>
                 {
                     b.Property<Guid>("Id")
@@ -601,6 +691,76 @@ namespace ClassManagement.Api.Migrations
                     b.HasIndex("NguoiThuId");
 
                     b.ToTable("PhieuThu", (string)null);
+                });
+
+            modelBuilder.Entity("ClassManagement.Api.Entities.TaiLieu", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("BuoiHocId")
+                        .HasColumnType("uuid");
+
+                    b.Property<bool>("DaXoa")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("GhiChu")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.Property<Guid>("GiaoVienId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("GoogleDriveFileId")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<string>("GoogleDriveLink")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<DateOnly?>("HanNop")
+                        .HasColumnType("date");
+
+                    b.Property<Guid>("HocSinhId")
+                        .HasColumnType("uuid");
+
+                    b.Property<long>("KichThuocByte")
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("MimeType")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<DateTime>("NgayCapNhatUtc")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<DateTime>("NgayTaoUtc")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<string>("TenTep")
+                        .IsRequired()
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)");
+
+                    b.Property<string>("TieuDe")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("BuoiHocId");
+
+                    b.HasIndex("GiaoVienId");
+
+                    b.HasIndex("HanNop");
+
+                    b.HasIndex("HocSinhId");
+
+                    b.ToTable("TaiLieu", (string)null);
                 });
 
             modelBuilder.Entity("ClassManagement.Api.Entities.YeuCauDatLaiMatKhau", b =>
@@ -803,6 +963,17 @@ namespace ClassManagement.Api.Migrations
                     b.Navigation("GiaoVien");
                 });
 
+            modelBuilder.Entity("ClassManagement.Api.Entities.PhienHocSinh", b =>
+                {
+                    b.HasOne("ClassManagement.Api.Entities.HocSinh", "HocSinh")
+                        .WithMany("PhienDangNhapHocSinh")
+                        .HasForeignKey("HocSinhId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("HocSinh");
+                });
+
             modelBuilder.Entity("ClassManagement.Api.Entities.PhieuThu", b =>
                 {
                     b.HasOne("ClassManagement.Api.Entities.HocPhi", "HocPhi")
@@ -819,6 +990,32 @@ namespace ClassManagement.Api.Migrations
                     b.Navigation("HocPhi");
 
                     b.Navigation("NguoiThu");
+                });
+
+            modelBuilder.Entity("ClassManagement.Api.Entities.TaiLieu", b =>
+                {
+                    b.HasOne("ClassManagement.Api.Entities.BuoiHoc", "BuoiHoc")
+                        .WithMany("DanhSachTaiLieu")
+                        .HasForeignKey("BuoiHocId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("ClassManagement.Api.Entities.GiaoVien", "GiaoVien")
+                        .WithMany()
+                        .HasForeignKey("GiaoVienId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("ClassManagement.Api.Entities.HocSinh", "HocSinh")
+                        .WithMany("DanhSachTaiLieu")
+                        .HasForeignKey("HocSinhId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("BuoiHoc");
+
+                    b.Navigation("GiaoVien");
+
+                    b.Navigation("HocSinh");
                 });
 
             modelBuilder.Entity("ClassManagement.Api.Entities.YeuCauDatLaiMatKhau", b =>
@@ -861,6 +1058,8 @@ namespace ClassManagement.Api.Migrations
 
             modelBuilder.Entity("ClassManagement.Api.Entities.BuoiHoc", b =>
                 {
+                    b.Navigation("DanhSachTaiLieu");
+
                     b.Navigation("DiemDanh");
                 });
 
@@ -882,7 +1081,11 @@ namespace ClassManagement.Api.Migrations
 
                     b.Navigation("DanhSachHocPhi");
 
+                    b.Navigation("DanhSachTaiLieu");
+
                     b.Navigation("LichHoc");
+
+                    b.Navigation("PhienDangNhapHocSinh");
                 });
 #pragma warning restore 612, 618
         }

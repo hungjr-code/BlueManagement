@@ -153,6 +153,9 @@ public class DichVuGoogleCalendar(
 
         giaoVien.GoogleTaiKhoan = email;
         giaoVien.GoogleRefreshTokenMaHoa = _baoVeToken.Protect(token.RefreshToken);
+        // Lưu lại quyền Google THỰC SỰ đã cấp: app xin thêm quyền mới (ví dụ ghi tài liệu lên Drive)
+        // thì người kết nối từ trước sẽ thiếu quyền đó, và chỉ cần nhìn cột này là biết.
+        giaoVien.GoogleQuyenDaCap = token.Quyen;
         giaoVien.GoogleCalendarId = string.IsNullOrWhiteSpace(giaoVien.GoogleCalendarId)
             ? email
             : giaoVien.GoogleCalendarId;
@@ -190,6 +193,7 @@ public class DichVuGoogleCalendar(
         if (!string.IsNullOrWhiteSpace(token.RefreshToken))
         {
             nguoiDung.GoogleRefreshTokenMaHoa = _baoVeToken.Protect(token.RefreshToken);
+            nguoiDung.GoogleQuyenDaCap = token.Quyen;
         }
 
         nguoiDung.GoogleCalendarId ??= email;
@@ -207,6 +211,12 @@ public class DichVuGoogleCalendar(
         giaoVien.GoogleCalendarId = null;
 
         await db.SaveChangesAsync(huyBo);
+    }
+
+    /// <summary>Giáo viên này đã kết nối Google chưa (có refresh token lưu trong database).</summary>
+    public Task<bool> DaKetNoiAsync(GiaoVien giaoVien, CancellationToken huyBo = default)
+    {
+        return Task.FromResult(!string.IsNullOrWhiteSpace(giaoVien.GoogleRefreshTokenMaHoa));
     }
 
     public async Task<IReadOnlyList<LichGoogle>> LayDanhSachLichAsync(GiaoVien giaoVien, CancellationToken huyBo = default)

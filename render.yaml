@@ -40,7 +40,10 @@ services:
       # database (xem deploy/README.md, mục "Khoá Data Protection").
       - key: DataProtection__ThuMucKhoa
         value: /app/khoa-bao-mat
-      # Google OAuth — điền sau khi đã có tên miền (xem deploy/README.md).
+      # Google OAuth — điền sau khi đã có tên miền (xem deploy/README.md). App xin 4 nhóm quyền:
+      # openid+email (đăng nhập), calendar.events + calendar.calendarlist.readonly (đẩy/kéo lịch dạy),
+      # drive.file (gửi tài liệu cho học sinh — CHỈ thấy tệp do app tạo). Ai kết nối trước khi có
+      # tính năng tài liệu phải ngắt rồi kết nối lại để cấp thêm quyền drive.file.
       - key: GoogleCalendar__ClientId
         sync: false
       - key: GoogleCalendar__ClientSecret

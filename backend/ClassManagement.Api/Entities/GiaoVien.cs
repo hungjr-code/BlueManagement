@@ -38,6 +38,24 @@ public class GiaoVien : IdentityUser<Guid>
     public string? GoogleRefreshTokenMaHoa { get; set; }
 
     /// <summary>
+    /// Lần cuối KÉO thay đổi từ Google Calendar về (chiều Google → app): giáo viên đổi giờ hay huỷ
+    /// buổi ngay trên Google thì lần kéo kế tiếp chỉ hỏi Google những sự kiện sửa từ mốc này.
+    /// </summary>
+    public DateTime? GoogleDongBoVeUtc { get; set; }
+
+    /// <summary>
+    /// Tự kéo thay đổi từ Google về khi mở màn Lịch dạy (cách nhau ít nhất 10 phút). Mỗi giáo viên
+    /// tự bật/tắt cho lịch của mình; tắt thì chỉ còn nút "Đồng bộ lại".
+    /// </summary>
+    public bool GoogleTuDongDongBo { get; set; } = true;
+
+    /// <summary>
+    /// Chuỗi quyền Google đã cấp ở lần kết nối gần nhất. Dùng để phát hiện người đã kết nối từ trước
+    /// khi app xin thêm quyền mới (ví dụ quyền ghi tài liệu lên Drive) ⇒ phải kết nối lại.
+    /// </summary>
+    public string? GoogleQuyenDaCap { get; set; }
+
+    /// <summary>
     /// Tài khoản ngân hàng của CHÍNH giáo viên này, dùng để sinh mã QR thu học phí cho học sinh
     /// mình dạy. Mỗi người tự khai tài khoản của mình; không ai — kể cả admin — sửa hộ hay đọc
     /// số tài khoản của người khác. Admin chỉ thấy số lượng đã khai.

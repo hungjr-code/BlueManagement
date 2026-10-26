@@ -49,7 +49,11 @@ public class KhachGoogleCalendarThat(
         var idToken = than.TryGetProperty("id_token", out var t) ? t.GetString() : null;
         var giay = than.TryGetProperty("expires_in", out var e) ? e.GetInt32() : 3600;
 
-        return new TokenGoogle(token, refresh, idToken, DateTime.UtcNow.AddSeconds(giay));
+        // Trường "scope" là danh sách quyền Google THỰC SỰ đã cấp (có thể rộng hơn hoặc hẹp hơn lúc
+        // xin). Lưu lại để biết người dùng đã cấp quyền ghi tài liệu lên Drive chưa.
+        var quyen = than.TryGetProperty("scope", out var s) ? s.GetString() : null;
+
+        return new TokenGoogle(token, refresh, idToken, DateTime.UtcNow.AddSeconds(giay), null, quyen);
     }
 
     public async Task<string> LamMoiAccessTokenAsync(string refreshToken, CancellationToken huyBo = default)
@@ -96,6 +100,139 @@ public class KhachGoogleCalendarThat(
         }
 
         return ketQua;
+    }
+
+    public async Task<IReadOnlyList<SuKienGoogleDaDoc>> LaySuKienThayDoiAsync(
+        string accessToken,
+        string calendarId,
+        DateTime? tuUtc,
+        CancellationToken huyBo = default)
+    {
+        var thamSo = new List<string>
+        {
+            "singleEvents=true",
+            // showDeleted=true là điều kiện để Google trả về cả sự kiện đã bị huỷ (status=cancelled):
+            // giáo viên huỷ buổi ngay trên Google là chuyện cần biết, không phải chuyện bỏ qua.
+            "showDeleted=true",
+            "maxResults=2500",
+            "fields=items(id,status,summary,start,end,updated)",
+        };
+
+        if (tuUtc is { } moc)
+        {
+            thamSo.Add("updatedMin=" + Uri.EscapeDataString(moc.ToString("yyyy-MM-ddTHH:mm:ssZ")));
+        }
+
+        using var yeuCau = TaoYeuCau(
+            HttpMethod.Get,
+            $"{DiaChiLich}/calendars/{Uri.EscapeDataString(calendarId)}/events?{string.Join('&', thamSo)}",
+            accessToken);
+
+        using var phanHoi = await http.SendAsync(yeuCau, huyBo);
+        var than = await DocHoacNemAsync(phanHoi, "đọc thay đổi từ Google Calendar", huyBo);
+
+        var ketQua = new List<SuKienGoogleDaDoc>();
+        if (!than.TryGetProperty("items", out var items))
+        {
+            return ketQua;
+        }
+
+        foreach (var item in items.EnumerateArray())
+        {
+            var suKien = DocSuKien(item);
+            if (suKien is not null)
+            {
+                ketQua.Add(suKien);
+            }
+        }
+
+        return ketQua;
+    }
+
+    public async Task<SuKienGoogleDaDoc?> LaySuKienAsync(
+        string accessToken,
+        string calendarId,
+        string eventId,
+        CancellationToken huyBo = default)
+    {
+        using var yeuCau = TaoYeuCau(
+            HttpMethod.Get,
+            $"{DiaChiLich}/calendars/{Uri.EscapeDataString(calendarId)}/events/{Uri.EscapeDataString(eventId)}"
+            + "?fields=id,status,summary,start,end,updated",
+            accessToken);
+
+        using var phanHoi = await http.SendAsync(yeuCau, huyBo);
+
+        // Sự kiện bị xoá tay trên Google: trả null thay vì ném lỗi, để luồng đối chiếu coi đó là
+        // "không còn trên Google" và báo cho giáo viên.
+        if (phanHoi.StatusCode is System.Net.HttpStatusCode.NotFound or System.Net.HttpStatusCode.Gone)
+        {
+            return null;
+        }
+
+        var than = await DocHoacNemAsync(phanHoi, "đọc một sự kiện", huyBo);
+        return DocSuKien(than);
+    }
+
+    private static SuKienGoogleDaDoc? DocSuKien(JsonElement item)
+    {
+        var id = item.TryGetProperty("id", out var i) ? i.GetString() : null;
+        if (string.IsNullOrWhiteSpace(id))
+        {
+            return null;
+        }
+
+        var daHuy = item.TryGetProperty("status", out var trangThai)
+            && string.Equals(trangThai.GetString(), "cancelled", StringComparison.OrdinalIgnoreCase);
+
+        var tieuDe = item.TryGetProperty("summary", out var tomTat) ? tomTat.GetString() : null;
+
+        return new SuKienGoogleDaDoc(
+            id,
+            daHuy,
+            tieuDe,
+            DocThoiDiem(item, "start"),
+            DocThoiDiem(item, "end"),
+            DocLucCapNhat(item));
+    }
+
+    private static DateTimeOffset? DocThoiDiem(JsonElement item, string ten)
+    {
+        if (!item.TryGetProperty(ten, out var phan))
+        {
+            return null;
+        }
+
+        if (phan.TryGetProperty("dateTime", out var gio)
+            && DateTimeOffset.TryParse(
+                gio.GetString(),
+                System.Globalization.CultureInfo.InvariantCulture,
+                System.Globalization.DateTimeStyles.None,
+                out var ketQua))
+        {
+            return ketQua;
+        }
+
+        // Sự kiện cả ngày chỉ có trường "date" — vẫn đọc được để đối chiếu.
+        if (phan.TryGetProperty("date", out var ngay)
+            && DateOnly.TryParse(ngay.GetString(), System.Globalization.CultureInfo.InvariantCulture, out var ngayThang))
+        {
+            return new DateTimeOffset(ngayThang.ToDateTime(TimeOnly.MinValue), TimeSpan.Zero);
+        }
+
+        return null;
+    }
+
+    private static DateTime? DocLucCapNhat(JsonElement item)
+    {
+        return item.TryGetProperty("updated", out var capNhat)
+            && DateTime.TryParse(
+                capNhat.GetString(),
+                System.Globalization.CultureInfo.InvariantCulture,
+                System.Globalization.DateTimeStyles.AdjustToUniversal | System.Globalization.DateTimeStyles.AssumeUniversal,
+                out var luc)
+            ? luc
+            : null;
     }
 
     public async Task<string> TaoSuKienAsync(

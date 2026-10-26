@@ -26,6 +26,7 @@ public class GoogleCalendarController(
     AppDbContext db,
     DichVuGoogleCalendar google,
     DichVuDongBoLich dongBo,
+    DichVuNhatKy nhatKy,
     NguoiDungHienTai nguoiDungHienTai,
     IHostEnvironment moiTruong,
     IOptions<GoogleCalendarOptions> tuyChon,
@@ -48,6 +49,12 @@ public class GoogleCalendarController(
             CalendarId = toi.GoogleCalendarId,
             Quyen = GoogleCalendarOptions.QuyenCanXin,
             LanDongBoCuoi = await dongBo.LayLanDongBoCuoiAsync(toi, huyBo),
+            LanDongBoVeCuoi = await dongBo.LayLanDongBoVeCuoiAsync(toi, huyBo),
+            TuDongDongBo = toi.GoogleTuDongDongBo,
+            // Bản ghi cũ (kết nối trước khi app xin quyền Drive) không biết mình có quyền gì: coi như
+            // CHƯA có để giao diện nhắc kết nối lại — sai theo hướng an toàn.
+            CoQuyenDrive = !string.IsNullOrWhiteSpace(toi.GoogleQuyenDaCap)
+                && GoogleCalendarOptions.CoQuyenDrive(toi.GoogleQuyenDaCap),
         });
     }
 
@@ -210,10 +217,100 @@ public class GoogleCalendarController(
             return NotFound();
         }
 
-        var soDaGui = KhachGoogleCalendarGia.SuKienDaGui.Count + KhachGoogleCalendarGia.SuKienDaXoa.Count;
-        KhachGoogleCalendarGia.SuKienDaGui.Clear();
-        KhachGoogleCalendarGia.SuKienDaXoa.Clear();
-        return Ok(soDaGui);
+        return Ok(KhachGoogleCalendarGia.XoaDauVet());
+    }
+
+    /// <summary>
+    /// Chỉ ở chế độ giả: những sự kiện đang nằm "trên lịch Google" — dùng để kiểm thử chiều KÉO VỀ
+    /// (lấy id sự kiện rồi sửa giờ hoặc huỷ ngay trên Google, không qua app).
+    /// </summary>
+    [HttpGet("gia-su-kien-tren-google")]
+    [AllowAnonymous]
+    public ActionResult<IReadOnlyList<SuKienGiaTrenGoogle>> GiaSuKienTrenGoogle()
+    {
+        if (!_tuyChon.CheDoGia || !moiTruong.IsDevelopment())
+        {
+            return NotFound();
+        }
+
+        return Ok(KhachGoogleCalendarGia.SuKienTrenGoogle.ToList());
+    }
+
+    /// <summary>
+    /// Chỉ ở chế độ giả: đóng vai giáo viên sửa giờ hoặc huỷ một sự kiện NGAY TRÊN GOOGLE. Đây là
+    /// hành vi mà chiều kéo về phải phát hiện được, nên kiểm thử cần cách tạo ra nó.
+    /// </summary>
+    [HttpPost("gia-sua-tren-google")]
+    [AllowAnonymous]
+    public ActionResult<object> GiaSuaTrenGoogle(GiaSuaSuKienRequest yeuCau)
+    {
+        if (!_tuyChon.CheDoGia || !moiTruong.IsDevelopment())
+        {
+            return NotFound();
+        }
+
+        if (yeuCau.Huy)
+        {
+            var daHuy = KhachGoogleCalendarGia.HuyTrenGoogle(yeuCau.EventId);
+            return daHuy is null ? NotFound() : Ok(new { daHuy.Id, daHuy.DaHuy });
+        }
+
+        if (yeuCau.BatDau is not { } batDau || yeuCau.KetThuc is not { } ketThuc)
+        {
+            return BadRequest(new { detail = "Cần cả batDau và ketThuc khi sửa giờ." });
+        }
+
+        var daSua = KhachGoogleCalendarGia.SuaTrenGoogle(yeuCau.EventId, batDau, ketThuc);
+        return daSua is null ? NotFound() : Ok(new { daSua.Id, daSua.BatDau, daSua.KetThuc });
+    }
+
+    /// <summary>
+    /// KÉO thay đổi từ Google Calendar về app cho chính người đang đăng nhập.
+    ///
+    /// Màn Lịch dạy gọi endpoint này với <c>chiKhiQuaHan = true</c> mỗi lần mở: máy chủ tự bỏ qua nếu
+    /// lần đồng bộ trước chưa quá 10 phút, nên mở đi mở lại vài lần không làm Google bị gọi liên tục.
+    /// Nút "Đồng bộ lại" gọi với <c>chiKhiQuaHan = false</c> để chạy ngay.
+    /// </summary>
+    [HttpPost("dong-bo-ve")]
+    public async Task<ActionResult<KetQuaDongBoVeDto>> DongBoVe(DongBoVeRequest yeuCau, CancellationToken huyBo)
+    {
+        var toi = await nguoiDungHienTai.YeuCauAsync(huyBo);
+
+        return Ok(await dongBo.DongBoVeAsync(
+            toi,
+            yeuCau.TuNgay,
+            yeuCau.DenNgay,
+            toi.Id,
+            yeuCau.ChiKhiQuaHan,
+            huyBo));
+    }
+
+    /// <summary>Bật/tắt tự kéo thay đổi từ Google về khi mở màn Lịch dạy — của chính người đang đăng nhập.</summary>
+    [HttpPut("tu-dong-dong-bo")]
+    public async Task<ActionResult<TrangThaiGoogleDto>> BatTuDongDongBo(
+        BatTuDongDongBoRequest yeuCau,
+        CancellationToken huyBo)
+    {
+        var toi = await nguoiDungHienTai.YeuCauAsync(huyBo);
+
+        toi.GoogleTuDongDongBo = yeuCau.Bat;
+        await db.SaveChangesAsync(huyBo);
+
+        await ghiLogNhatKy(toi.Id, yeuCau.Bat, huyBo);
+
+        return Ok(new { tuDongDongBo = toi.GoogleTuDongDongBo });
+    }
+
+    private async Task ghiLogNhatKy(Guid nguoiThucHienId, bool bat, CancellationToken huyBo)
+    {
+        await nhatKy.GhiAsync(
+            nguoiThucHienId,
+            "doi_tu_dong_dong_bo_google",
+            "GiaoVien",
+            nguoiThucHienId.ToString(),
+            null,
+            DichVuNhatKy.Json(new { tuDongDongBo = bat }),
+            huyBo);
     }
 
     /// <summary>Ngắt kết nối của chính mình. Hỏi trước có xoá các sự kiện đã tạo trên Google hay không.</summary>

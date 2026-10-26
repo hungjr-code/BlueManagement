@@ -13,7 +13,8 @@ Cách làm: build giao diện rồi nhúng vào `wwwroot` của API — `Program
 
 | Thành phần | Ở đâu | Ghi chú |
 |---|---|---|
-| Giao diện + API | **Một** web service Docker (Render free) | `deploy/render/Dockerfile`, context = gốc repo |
+| Giao diện + API | **Một** web service Docker (Render free) | `deploy/render/Dockerfile`, context = gốc repo. Giao diện có hai cổng vào: giáo viên/admin ở `/login`, học sinh ở `/hoc-sinh/dang-nhap` |
+| Tệp bài tập | Google Drive của **từng giáo viên** (quyền `drive.file`) | Không mở công khai; học sinh tải qua app, app đọc hộ bằng token của giáo viên |
 | Database | **PostgreSQL trên Supabase** (free) | Shared/Session pooler, có SSL |
 | Mã nguồn | GitHub `hungjr-code/BlueManagement` | Render tự kéo code từ đây |
 
@@ -96,6 +97,12 @@ ConnectionStrings__MacDinh="<chuỗi kết nối Supabase>" dotnet dotnet-ef dat
 
 - Khai lại **cả hai** redirect URI theo tên miền thật:
   `https://<ten-mien>/api/auth/google/callback` và `https://<ten-mien>/api/google-calendar/callback`.
+- Quyền xin từ Google gồm **bốn** mục: `openid`, `email`, `calendar.events`,
+  `calendar.calendarlist.readonly` và `drive.file` (gửi tài liệu cho học sinh — app chỉ thấy tệp do
+  chính nó tạo). Không khai thừa quyền nào khác.
+- **Ai đã kết nối Google trước khi có tính năng tài liệu phải kết nối lại** để cấp quyền `drive.file`:
+  `GET /api/google-calendar/trang-thai` trả `coQuyenDrive: false` và màn Cài đặt nhắc "Ngắt kết nối
+  rồi Kết nối lại".
 - Sửa `GoogleCalendar__RedirectUri`, `RedirectUriDangNhap`, `FrontendUrl` (biến môi trường trên host).
 - Chuyển OAuth consent screen sang **In production** (nếu để *Testing* mà xin quyền `calendar.events` thì
   refresh token **hết hạn sau 7 ngày**, giáo viên phải nối lại mỗi tuần).
@@ -121,6 +128,9 @@ lần deploy**. Ba lựa chọn, chọn một trước khi mở cho nhiều ngư
 4. Đăng nhập bằng Google → **Cài đặt** thấy "đã kết nối"; **Lịch dạy** bấm *Đồng bộ* rồi mở Google
    Calendar xem sự kiện.
 5. Chạy `python deploy/kiem-tra-sau-deploy.py https://<ten-mien> https://<ten-mien> --mat-khau <mk admin>`.
+6. Thử đường của học sinh: tạo một học sinh → **Học sinh → Tài khoản → Cấp tài khoản** (đọc mã + mật
+   khẩu tạm) → mở `https://<ten-mien>/hoc-sinh/dang-nhap` → đăng nhập bằng mã đó → thấy bài tập và
+   lịch học của chính em. Gửi một tài liệu cho em rồi bấm *Đồng bộ lại* để kiểm chiều lên Google.
 
 ## 8. Sao lưu (đừng bỏ)
 

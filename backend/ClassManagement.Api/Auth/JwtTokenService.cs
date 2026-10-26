@@ -49,6 +49,41 @@ public class JwtTokenService(IOptions<JwtOptions> tuyChon)
     }
 
     /// <summary>
+    /// Access token của HỌC SINH. Khác token giáo viên ở hai chỗ: vai trò là "hoc_sinh", và audience
+    /// là <see cref="JwtOptions.AudienceHocSinh"/> — nhờ vậy token này KHÔNG dùng được cho bất kỳ API
+    /// nào của giáo viên, kể cả khi ai đó quên kiểm tra vai trò.
+    /// </summary>
+    public (string Token, DateTime HetHanUtc) TaoAccessToken(HocSinh hocSinh)
+    {
+        var hetHan = DateTime.UtcNow.AddMinutes(_tuyChon.AccessTokenMinutes);
+
+        var claims = new List<Claim>
+        {
+            new(JwtRegisteredClaimNames.Sub, hocSinh.Id.ToString()),
+            new(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
+            new(ChinhSach.ClaimVaiTro, ChinhSach.VaiTroHocSinh),
+            new(ChinhSach.ClaimHoTen, hocSinh.HoTen),
+        };
+
+        if (!string.IsNullOrWhiteSpace(hocSinh.MaHocSinh))
+        {
+            claims.Add(new Claim(ChinhSach.ClaimMaHocSinh, hocSinh.MaHocSinh));
+        }
+
+        var thongTin = new JwtSecurityToken(
+            issuer: _tuyChon.Issuer,
+            audience: _tuyChon.AudienceHocSinh,
+            claims: claims,
+            notBefore: DateTime.UtcNow,
+            expires: hetHan,
+            signingCredentials: new SigningCredentials(
+                new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_tuyChon.Key!)),
+                SecurityAlgorithms.HmacSha256));
+
+        return (new JwtSecurityTokenHandler().WriteToken(thongTin), hetHan);
+    }
+
+    /// <summary>
     /// Refresh token là 64 byte ngẫu nhiên. Không nhét thêm thông tin gì vào token: mọi thứ cần
     /// biết đều tra được trong bảng PhienDangNhap, nhờ vậy thu hồi phiên là xoá/huỷ một dòng.
     /// </summary>

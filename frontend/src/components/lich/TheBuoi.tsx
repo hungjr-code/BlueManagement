@@ -51,6 +51,25 @@ export function TheBuoi({ buoi, hienGiaoVien, trangThai, daSua, hanhDong, onBam 
           {gioNgan(buoi.gioBatDau)}–{gioNgan(buoi.gioKetThuc)}
         </span>
         {buoi.laBuoiDayBu ? <span className="the-buoi-nhan">bù</span> : null}
+        {/* Buổi này giáo viên đã dời giờ NGAY TRÊN Google Calendar: nhãn "dời" kèm giờ gốc. */}
+        {buoi.gioBatDauTheoLich ? (
+          <span
+            className="the-buoi-nhan"
+            title={'Đã dời từ ' + gioNgan(buoi.gioBatDauTheoLich) + ' theo Google Calendar'}
+          >
+            dời
+          </span>
+        ) : null}
+        {/* Có tài liệu đã giao cho buổi này. */}
+        {buoi.soTaiLieu > 0 ? (
+          <span className="the-buoi-nhan" title={buoi.soTaiLieu + ' tài liệu đã giao'}>
+            bài
+          </span>
+        ) : null}
+        {/* Lệch với Google mà hệ thống không tự sửa — giáo viên mở chi tiết để xem. */}
+        {buoi.googleLechGanNhat ? (
+          <span className="cham canh-bao" title={buoi.googleLechGanNhat} />
+        ) : null}
         {daSua ? <span className="cham-sua" title="Chưa lưu" /> : null}
         <span
           className={`cham ${trangThaiHien}`}

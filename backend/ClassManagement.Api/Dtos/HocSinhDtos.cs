@@ -48,6 +48,14 @@ public class HocSinhDto
 
     public TrangThaiHocSinh TrangThai { get; set; }
 
+    /// <summary>Mã đăng nhập của học sinh (HS-0007). Có mã là em đăng nhập được vào xem bài tập.</summary>
+    public string? MaHocSinh { get; set; }
+
+    /// <summary>Đã cấp mật khẩu chưa. KHÔNG trả về bản băm hay mật khẩu — chỉ trạng thái.</summary>
+    public bool CoTaiKhoan { get; set; }
+
+    public DateOnly? LanDangNhapCuoiNgay { get; set; }
+
     public IReadOnlyList<KhungGioHocDto> LichHoc { get; set; } = [];
 
     public DateTime NgayCapNhatUtc { get; set; }
@@ -120,6 +128,18 @@ public class TaoHocSinhRequest
     /// gặp trùng tên sẽ nhận 409 để hỏi lại; gửi lại với cờ này = người dùng đã xác nhận.
     /// </summary>
     public bool BoQuaCanhBaoTrungTen { get; set; }
+
+    /// <summary>
+    /// Mã đăng nhập cho học sinh. Bỏ trống thì hệ thống tự sinh (HS-0001, HS-0002…).
+    /// </summary>
+    [MaxLength(20)]
+    public string? MaHocSinh { get; set; }
+
+    /// <summary>
+    /// Cấp tài khoản đăng nhập thì làm ở bước riêng (<c>POST /api/students/{id}/tai-khoan</c>): khi đó
+    /// hệ thống trả về mật khẩu tạm ĐÚNG MỘT LẦN, nên nó phải là một phản hồi riêng chứ không lẫn
+    /// vào phản hồi tạo hồ sơ.
+    /// </summary>
 }
 
 /// <summary>Dữ liệu để sửa học sinh. Không có cờ bỏ qua cảnh báo trùng tên vì đã tạo rồi.</summary>

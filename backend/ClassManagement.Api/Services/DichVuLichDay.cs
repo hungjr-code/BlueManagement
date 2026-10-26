@@ -99,6 +99,9 @@ public class DichVuLichDay(AppDbContext db, DichVuBuoiHoc dichVuBuoiHoc)
             .Include(x => x.GiaoVien)
             .Include(x => x.DiemDanh)
             .ThenInclude(x => x!.NguoiDiemDanh)
+            // Số tài liệu của buổi hiện ngay trên ô lịch, nên phải nạp kèm — không thì mọi buổi đều
+            // báo 0 tài liệu dù giáo viên đã gửi bài.
+            .Include(x => x.DanhSachTaiLieu)
             .OrderBy(x => x.Ngay)
             .ThenBy(x => x.GioBatDau)
             .ThenBy(x => x.HocSinh!.HoTen)
@@ -130,6 +133,10 @@ public class DichVuLichDay(AppDbContext db, DichVuBuoiHoc dichVuBuoiHoc)
             ThoiDiemDiemDanhUtc = buoiHoc.DiemDanh?.ThoiDiemDiemDanhUtc,
             DaDongBoGoogle = buoiHoc.GoogleEventId is not null,
             GoogleDongBoUtc = buoiHoc.GoogleDongBoUtc,
+            GoogleDaHuy = buoiHoc.GoogleDaHuy,
+            GoogleLechGanNhat = buoiHoc.GoogleLechGanNhat,
+            SoTaiLieu = buoiHoc.DanhSachTaiLieu.Count(x => !x.DaXoa),
+            GioBatDauTheoLich = buoiHoc.GioBatDauTheoLich,
         };
     }
 

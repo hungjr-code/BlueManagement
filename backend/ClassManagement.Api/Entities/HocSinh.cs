@@ -55,8 +55,30 @@ public class HocSinh
 
     public DateTime NgayCapNhatUtc { get; set; }
 
+    /// <summary>
+    /// Mã đăng nhập của học sinh, ví dụ HS-0007. Học sinh nhỏ không có email nên mã này thay cho
+    /// email: giáo viên đọc mã + mật khẩu cho học sinh để em vào xem bài tập của mình.
+    /// </summary>
+    public string? MaHocSinh { get; set; }
+
+    /// <summary>Mật khẩu của học sinh, ĐÃ BĂM bằng PasswordHasher. Rỗng nghĩa là chưa cấp tài khoản.</summary>
+    public string? MatKhauBam { get; set; }
+
+    public int SoLanSaiMatKhau { get; set; }
+
+    /// <summary>Khoá tạm khi gõ sai mật khẩu quá nhiều lần (giống tài khoản giáo viên).</summary>
+    public DateTime? KhoaDenLuc { get; set; }
+
+    public DateTime? LanDangNhapCuoiUtc { get; set; }
+
     /// <summary>Các khung giờ học lặp hằng tuần, ví dụ thứ hai 18:00–19:30.</summary>
     public ICollection<KhungGioHoc> LichHoc { get; set; } = [];
+
+    /// <summary>Phiên đăng nhập của học sinh — tách hẳn khỏi phiên của giáo viên.</summary>
+    public ICollection<PhienHocSinh> PhienDangNhapHocSinh { get; set; } = [];
+
+    /// <summary>Tài liệu giáo viên đã giao cho học sinh này.</summary>
+    public ICollection<TaiLieu> DanhSachTaiLieu { get; set; } = [];
 
     public ICollection<BuoiHoc> DanhSachBuoiHoc { get; set; } = [];
 

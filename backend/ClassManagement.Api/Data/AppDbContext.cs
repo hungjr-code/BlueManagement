@@ -40,6 +40,11 @@ public class AppDbContext : IdentityUserContext<GiaoVien, Guid>
 
     public DbSet<YeuCauDatLaiMatKhau> YeuCauDatLaiMatKhau => Set<YeuCauDatLaiMatKhau>();
 
+    public DbSet<TaiLieu> TaiLieu => Set<TaiLieu>();
+
+    /// <summary>Phiên đăng nhập của học sinh — bảng riêng, không dùng chung với phiên giáo viên.</summary>
+    public DbSet<PhienHocSinh> PhienHocSinh => Set<PhienHocSinh>();
+
     /// <summary>
     /// Tài khoản đăng nhập của giáo viên — cũng chính là bảng người dùng của Identity, đã đổi tên
     /// thành GiaoVien cho khớp nghiệp vụ. Identity gọi nó là Users; ở đây gọi đúng tên của nó.
@@ -55,6 +60,7 @@ public class AppDbContext : IdentityUserContext<GiaoVien, Guid>
         CauHinhBuoiHoc(moHinh);
         CauHinhHocPhi(moHinh);
         CauHinhCaiDat(moHinh);
+        CauHinhTaiLieu(moHinh);
         CauHinhYeuCauDatLaiMatKhau(moHinh);
         CauHinhNhatKy(moHinh);
         CauHinhPhienDangNhap(moHinh);
@@ -87,6 +93,8 @@ public class AppDbContext : IdentityUserContext<GiaoVien, Guid>
         giaoVien.Property(x => x.GoogleTaiKhoan).HasMaxLength(256);
         giaoVien.Property(x => x.GoogleCalendarId).HasMaxLength(256);
         giaoVien.Property(x => x.GoogleRefreshTokenMaHoa).HasMaxLength(2000);
+        giaoVien.Property(x => x.GoogleQuyenDaCap).HasMaxLength(2000);
+        giaoVien.Property(x => x.GoogleTuDongDongBo).HasDefaultValue(true);
 
         giaoVien.Property(x => x.VaiTro)
             .HasConversion(EnumWire.Converter<VaiTro>())
@@ -111,6 +119,8 @@ public class AppDbContext : IdentityUserContext<GiaoVien, Guid>
         hocSinh.Property(x => x.SoDienThoaiPhuHuynh).HasMaxLength(30);
         hocSinh.Property(x => x.Lop).HasMaxLength(100);
         hocSinh.Property(x => x.GhiChu).HasMaxLength(1000);
+        hocSinh.Property(x => x.MaHocSinh).HasMaxLength(20);
+        hocSinh.Property(x => x.MatKhauBam).HasMaxLength(500);
 
         hocSinh.Property(x => x.CachTinhHocPhi)
             .HasConversion(EnumWire.Converter<CachTinhHocPhi>())
@@ -131,6 +141,24 @@ public class AppDbContext : IdentityUserContext<GiaoVien, Guid>
         hocSinh.HasIndex(x => x.GiaoVienId);
         hocSinh.HasIndex(x => x.TrangThai);
         hocSinh.HasIndex(x => x.HoTen);
+
+        // Mã học sinh là tên đăng nhập nên phải duy nhất. Điều kiện lọc "IS NOT NULL" để những học
+        // sinh chưa được cấp mã (dữ liệu cũ trước khi có tính năng này) không chặn nhau.
+        hocSinh.HasIndex(x => x.MaHocSinh).IsUnique().HasFilter("\"MaHocSinh\" IS NOT NULL");
+
+        var phienHocSinh = moHinh.Entity<PhienHocSinh>();
+        phienHocSinh.ToTable("PhienHocSinh");
+        phienHocSinh.Property(x => x.TokenBam).HasMaxLength(64).IsRequired();
+        phienHocSinh.Property(x => x.DiaChiIp).HasMaxLength(64);
+        phienHocSinh.Property(x => x.ThietBi).HasMaxLength(300);
+
+        phienHocSinh.HasOne(x => x.HocSinh)
+            .WithMany(x => x.PhienDangNhapHocSinh)
+            .HasForeignKey(x => x.HocSinhId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        phienHocSinh.HasIndex(x => x.TokenBam).IsUnique();
+        phienHocSinh.HasIndex(x => x.HocSinhId);
 
         var khungGio = moHinh.Entity<KhungGioHoc>();
         khungGio.ToTable("KhungGioHoc");
@@ -163,6 +191,7 @@ public class AppDbContext : IdentityUserContext<GiaoVien, Guid>
             .OnDelete(DeleteBehavior.Restrict);
 
         buoiHoc.Property(x => x.GoogleEventId).HasMaxLength(200);
+        buoiHoc.Property(x => x.GoogleLechGanNhat).HasMaxLength(300);
 
         // Không cho sinh trùng một buổi hai lần cho cùng học sinh.
         buoiHoc.HasIndex(x => new { x.HocSinhId, x.Ngay, x.GioBatDau }).IsUnique();
@@ -316,6 +345,40 @@ public class AppDbContext : IdentityUserContext<GiaoVien, Guid>
 
         phien.HasIndex(x => x.TokenBam).IsUnique();
         phien.HasIndex(x => x.GiaoVienId);
+    }
+
+    private static void CauHinhTaiLieu(ModelBuilder moHinh)
+    {
+        var taiLieu = moHinh.Entity<TaiLieu>();
+        taiLieu.ToTable("TaiLieu");
+        taiLieu.Property(x => x.TieuDe).HasMaxLength(200).IsRequired();
+        taiLieu.Property(x => x.TenTep).HasMaxLength(300).IsRequired();
+        taiLieu.Property(x => x.MimeType).HasMaxLength(200);
+        taiLieu.Property(x => x.GoogleDriveFileId).HasMaxLength(200).IsRequired();
+        taiLieu.Property(x => x.GoogleDriveLink).HasMaxLength(500);
+        taiLieu.Property(x => x.GhiChu).HasMaxLength(1000);
+
+        taiLieu.HasOne(x => x.GiaoVien)
+            .WithMany()
+            .HasForeignKey(x => x.GiaoVienId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        taiLieu.HasOne(x => x.HocSinh)
+            .WithMany(x => x.DanhSachTaiLieu)
+            .HasForeignKey(x => x.HocSinhId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        // Buổi học bị xoá thì tài liệu vẫn còn, chỉ mất dấu buổi (thành tài liệu giao riêng):
+        // thu hồi bài tập của học sinh chỉ vì dọn một buổi là việc không ai muốn.
+        taiLieu.HasOne(x => x.BuoiHoc)
+            .WithMany(x => x.DanhSachTaiLieu)
+            .HasForeignKey(x => x.BuoiHocId)
+            .OnDelete(DeleteBehavior.SetNull);
+
+        taiLieu.HasIndex(x => x.GiaoVienId);
+        taiLieu.HasIndex(x => x.HocSinhId);
+        taiLieu.HasIndex(x => x.BuoiHocId);
+        taiLieu.HasIndex(x => x.HanNop);
     }
 
     /// <summary>
