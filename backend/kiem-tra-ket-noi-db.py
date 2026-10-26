@@ -27,7 +27,26 @@ except ImportError:  # pragma: no cover
     raise SystemExit("Thiếu thư viện pg8000. Cài bằng: python -m pip install pg8000")
 
 THU_MUC_API = os.path.join(os.path.dirname(os.path.abspath(__file__)), "ClassManagement.Api")
-DOTNET = os.environ.get("DOTNET_EXE") or "dotnet"
+def _chon_dotnet() -> str:
+    """Chọn đúng chương trình `dotnet`.
+
+    Trên máy dev này bản `dotnet` trong PATH có lúc KHÔNG có tool cục bộ `dotnet-ef` đã restore (bản
+    cài lại nằm ở %USERPROFILE%\\.dotnet), nên chạy `dotnet dotnet-ef` ở đó sẽ báo "Run dotnet tool
+    restore" dù manifest có sẵn. Ưu tiên bản trong thư mục người dùng khi nó tồn tại.
+    """
+    chi_dinh = os.environ.get("DOTNET_EXE")
+    if chi_dinh:
+        return chi_dinh
+
+    ban_nguoi_dung = os.path.join(
+        os.environ.get("USERPROFILE", os.path.expanduser("~")),
+        ".dotnet",
+        "dotnet.exe" if os.name == "nt" else "dotnet")
+
+    return ban_nguoi_dung if os.path.exists(ban_nguoi_dung) else "dotnet"
+
+
+DOTNET = _chon_dotnet()
 BANG_CAN_XEM = ("GiaoVien", "HocSinh", "BuoiHoc", "HocPhi", "NhatKy", "__EFMigrationsHistory")
 
 
@@ -166,6 +185,10 @@ def kiem(chuoi: str) -> int:
 
 def chay_migration(chuoi: str) -> int:
     print("\n== dotnet ef database update (trỏ vào chuỗi vừa nhập) ==")
+
+    # `dotnet-ef` là tool CỤC BỘ (backend/ClassManagement.Api/.config/dotnet-tools.json): máy vừa clone
+    # hoặc vừa cài lại SDK sẽ chưa có nó. Restore trước, hỏng thì thôi (rồi báo lỗi ở bước dưới).
+    subprocess.run([DOTNET, "tool", "restore"], cwd=THU_MUC_API, capture_output=True, text=True)
     env = dict(os.environ)
     env["ConnectionStrings__MacDinh"] = chuoi
     r = subprocess.run([DOTNET, "dotnet-ef", "database", "update"], cwd=THU_MUC_API, env=env,
